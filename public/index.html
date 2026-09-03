@@ -96,8 +96,9 @@
     /* Compact billing workspace styling */
     body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef4f1; position: relative; isolation: isolate; overflow-x: hidden; }
     body::before, body::after { content: ''; position: fixed; pointer-events: none; z-index: -1; will-change: transform, opacity; }
-    body::before { inset: -18%; background: radial-gradient(ellipse at 12% 18%, rgba(210, 171, 104, 0.18), transparent 30%), radial-gradient(ellipse at 88% 76%, rgba(58, 125, 111, 0.14), transparent 32%), linear-gradient(120deg, #eef4f1, #fbfaf6 48%, #e8f1ee); background-size: 120% 120%, 120% 120%, 180% 180%; animation: ambientDrift 24s ease-in-out infinite alternate; }
-    body::after { inset: 0; opacity: 0.34; background-image: radial-gradient(circle at 18% 32%, rgba(255,255,255,0.7) 0 1px, transparent 1.5px), radial-gradient(circle at 72% 18%, rgba(255,255,255,0.55) 0 1px, transparent 1.5px), radial-gradient(circle at 82% 82%, rgba(20,75,62,0.13) 0 1px, transparent 1.5px); background-size: 116px 132px, 173px 151px, 137px 169px; animation: particleDrift 30s linear infinite; }
+    body::before { inset: -18%; background: radial-gradient(ellipse at 12% 18%, rgba(210, 171, 104, 0.18), transparent 30%), radial-gradient(ellipse at 88% 76%, rgba(58, 125, 111, 0.14), transparent 32%), linear-gradient(120deg, #eef4f1, #fbfaf6 48%, #e8f1ee); background-size: 120% 120%, 120% 120%, 180% 180%; animation: ambientDrift 36s ease-in-out infinite alternate; }
+    body::after { inset: 0; opacity: 0.34; background-image: radial-gradient(circle at 18% 32%, rgba(255,255,255,0.7) 0 1px, transparent 1.5px), radial-gradient(circle at 72% 18%, rgba(255,255,255,0.55) 0 1px, transparent 1.5px), radial-gradient(circle at 82% 82%, rgba(20,75,62,0.13) 0 1px, transparent 1.5px); background-size: 116px 132px, 173px 151px, 137px 169px; animation: particleDrift 45s linear infinite; }
+    body.billing-active::before, body.billing-active::after { animation-play-state: paused; }
     @keyframes ambientDrift { 0% { transform: translate3d(-1%, -1%, 0) scale(1); } 100% { transform: translate3d(1%, 1%, 0) scale(1.04); } }
     @keyframes particleDrift { from { background-position: 0 0, 40px 20px, 20px 50px; } to { background-position: 26px 18px, 4px 42px, 48px 12px; } }
     h1, h2, h3, h4, h5, h6, button, input, select, textarea { font-family: 'Segoe UI', Arial, sans-serif; letter-spacing: 0; }
@@ -159,7 +160,7 @@
 
     .page {
       display: none;
-      animation: fadeIn 0.3s ease-in;
+      animation: fadeIn 0.16s ease-out;
     }
 
     .page.active {
@@ -982,8 +983,8 @@
     .hidden { display: none; }
     .opacity-50 { opacity: 0.5; }
 
-    .splash { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: #102f2a; animation: splashOut 0.5s ease 2.2s forwards; pointer-events: none; }
-    .splash img { width: min(62vw, 280px); animation: logoRise 1.3s cubic-bezier(.22,.8,.32,1) forwards; }
+    .splash { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: #102f2a; animation: splashOut 0.35s ease 1.7s forwards; pointer-events: none; }
+    .splash img { width: min(62vw, 280px); animation: logoRise 850ms cubic-bezier(.22,.8,.32,1) forwards; }
     @keyframes logoRise { from { opacity: 0; transform: translateY(90px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes splashOut { to { opacity: 0; visibility: hidden; } }
     .brand-logo { max-width: 180px; max-height: 78px; object-fit: contain; }
@@ -1034,7 +1035,7 @@
     }
 
     #dashboardPage .action-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 0; }
-    #dashboardPage .card.action-card { min-height: 132px; padding: 22px 18px; border-radius: 10px; border-color: rgba(207, 224, 217, 0.9); background: rgba(255, 255, 255, 0.68); box-shadow: 0 5px 18px rgba(24, 55, 47, 0.06); align-items: flex-start; justify-content: center; gap: 8px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); opacity: 0; animation: cardReveal 500ms both cubic-bezier(.2,.75,.2,1); }
+    #dashboardPage .card.action-card { min-height: 132px; padding: 22px 18px; border-radius: 10px; border-color: rgba(207, 224, 217, 0.9); background: rgba(255, 255, 255, 0.68); box-shadow: 0 5px 18px rgba(24, 55, 47, 0.06); align-items: flex-start; justify-content: center; gap: 8px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); opacity: 0; animation: cardReveal 280ms both cubic-bezier(.2,.75,.2,1); }
     #dashboardPage .card.action-card:nth-child(1) { animation-delay: 380ms; }
     #dashboardPage .card.action-card:nth-child(2) { animation-delay: 450ms; }
     #dashboardPage .card.action-card:nth-child(3) { animation-delay: 520ms; }
@@ -1228,7 +1229,7 @@
           <div style="display: flex; gap: var(--spacing-md); flex-direction: column;">
             <button class="btn-primary btn-lg btn-block" onclick="generateRetailBill()">Generate Estimate</button>
             <button class="btn-secondary btn-lg btn-block" onclick="clearRetailBill()">Clear Estimate</button>
-            <button class="btn-secondary btn-lg btn-block" onclick="navigateTo('dashboard')">← Back</button>
+            <button class="btn-secondary btn-lg btn-block" onclick="goBack()">← Back</button>
           </div>
         </div>
       </div>
@@ -1297,7 +1298,7 @@
           <div style="display: flex; gap: var(--spacing-md); flex-direction: column;">
             <button class="btn-primary btn-lg btn-block" onclick="generateWholesaleBill()">Generate Estimate</button>
             <button class="btn-secondary btn-lg btn-block" onclick="clearWholesaleBill()">Clear Estimate</button>
-            <button class="btn-secondary btn-lg btn-block" onclick="navigateTo('dashboard')">← Back</button>
+            <button class="btn-secondary btn-lg btn-block" onclick="goBack()">← Back</button>
           </div>
         </div>
       </div>
@@ -1444,10 +1445,11 @@
     };
 
     // ==================== NAVIGATION ====================
-    function navigateTo(page) {
+    function renderPage(page) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(page + 'Page').classList.add('active');
       state.currentPage = page;
+      document.body.classList.toggle('billing-active', page === 'retailBilling' || page === 'wholesaleBilling');
       updateHeader();
 
       if (page === 'adminPanel') {
@@ -1459,12 +1461,34 @@
       }
     }
 
+    function navigateTo(page) {
+      if (!document.getElementById(page + 'Page') || page === state.currentPage) {
+        return;
+      }
+
+      window.history.pushState({ page }, '', window.location.href);
+      renderPage(page);
+    }
+
+    function goBack() {
+      if (state.currentPage === 'dashboard') {
+        return;
+      }
+
+      if (window.history.state?.page === state.currentPage) {
+        window.history.back();
+      } else {
+        window.history.replaceState({ page: 'dashboard' }, '', window.location.href);
+        renderPage('dashboard');
+      }
+    }
+
     function updateHeader() {
       const navButtons = document.getElementById('navButtons');
       navButtons.innerHTML = '';
 
       if (state.currentPage !== 'dashboard') {
-        navButtons.innerHTML = `<button class="btn-secondary nav-back" onclick="navigateTo('dashboard')">← Dashboard</button>`;
+        navButtons.innerHTML = `<button class="btn-secondary nav-back" onclick="goBack()">← Dashboard</button>`;
       }
     }
 
@@ -2013,7 +2037,13 @@
     }
 
     // ==================== INITIALIZATION ====================
+    window.addEventListener('popstate', event => {
+      renderPage(event.state?.page || 'dashboard');
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
+      window.history.replaceState({ page: 'dashboard' }, '', window.location.href);
+      renderPage('dashboard');
       updateHeader();
       console.log('✨ Lakshmi Narayan Billing System loaded successfully');
     });
