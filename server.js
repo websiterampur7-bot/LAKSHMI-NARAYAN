@@ -590,8 +590,6 @@ app.post('/api/exports/pdf', async (req, res) => {
     if (bill.customer_phone) doc.text(`Phone: ${safeText(bill.customer_phone)}`);
     if (details.description) doc.text(`Description: ${safeText(details.description)}`);
     if (details.note) doc.text(`Note: ${safeText(details.note)}`);
-    pdfFont(doc, 'Thank you for your business');
-    doc.moveDown(0.5).fontSize(8).text('Thank you for your business', { align: 'center' });
     doc.end();
   } catch (err) { console.error('PDF export failed:', err); res.status(500).json({ error: 'Failed to create PDF' }); }
 });
@@ -621,7 +619,6 @@ app.post('/api/exports/png', async (req, res) => {
     if (bill.customer_phone) { content += text(`Phone: ${bill.customer_phone}`, 'body', 18, y, 10); y += 18; }
     if (details.description) { content += text(`Description: ${details.description}`, 'body', 18, y, 10); y += 18; }
     if (details.note) { content += text(`Note: ${details.note}`, 'body', 18, y, 10); y += 18; }
-    content += text('Thank you for your business', 'body center', width / 2, y + 12, 10, 'middle');
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${Math.max(height, y + 32)}"><style>.brand{font-family:'Bodoni MT','Baskerville Old Face',Georgia,serif;fill:#111}.body{font-family:'Courier New','Nirmala UI',sans-serif;fill:#111}.dev{font-family:'Nirmala UI','Nirmala',sans-serif}.bold{font-weight:700}.center{text-anchor:middle}</style>${content}</svg>`;
     const png = await sharp(Buffer.from(svg)).resize({ width: width * scale, height: Math.max(height, y + 32) * scale }).png().toBuffer();
     const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.png`;

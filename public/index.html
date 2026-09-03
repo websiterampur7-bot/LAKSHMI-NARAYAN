@@ -1998,10 +1998,6 @@
             TOTAL: ₹ ${Number(bill.total).toFixed(2)}
           </div>
 
-          <div class="receipt-footer">
-            <p>Thank you for your business!</p>
-            <p>Visit us again</p>
-          </div>
         </div>
       `;
 
@@ -2109,7 +2105,7 @@
 
     function renderEstimate(type, bill) {
       const rows = (bill.items || []).map(item => `<div class="receipt-item"><div>${item.name}<small>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</small></div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
-      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-brand-heading"><span>LAXMI NARAYAN</span><span>NAMKEEN</span></div><strong>ESTIMATE</strong></div><div class="receipt-estimate-info">${bill.invoice_number || ''}<br>${bill.date || ''} | ${bill.time || ''}</div><div class="receipt-items">${rows}</div><div class="receipt-total">TOTAL: ₹ ${Number(bill.total).toFixed(2)}</div>${bill.customer_name ? `<p>Customer: ${bill.customer_name}</p>` : ''}${bill.customer_phone ? `<p>Phone: ${bill.customer_phone}</p>` : ''}${bill.description ? `<p>Description: ${bill.description}</p>` : ''}${bill.note ? `<p>Note: ${bill.note}</p>` : ''}<div class="receipt-footer">Thank you for your business</div></div>`;
+      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-brand-heading"><span>LAXMI NARAYAN</span><span>NAMKEEN</span></div><strong>ESTIMATE</strong></div><div class="receipt-estimate-info">${bill.invoice_number || ''}<br>${bill.date || ''} | ${bill.time || ''}</div><div class="receipt-items">${rows}</div><div class="receipt-total">TOTAL: ₹ ${Number(bill.total).toFixed(2)}</div>${bill.customer_name ? `<p>Customer: ${bill.customer_name}</p>` : ''}${bill.customer_phone ? `<p>Phone: ${bill.customer_phone}</p>` : ''}${bill.description ? `<p>Description: ${bill.description}</p>` : ''}${bill.note ? `<p>Note: ${bill.note}</p>` : ''}</div>`;
       state.lastEstimate = { type, bill }; navigateTo('receipt');
     }
     async function generateEstimate(type) {
