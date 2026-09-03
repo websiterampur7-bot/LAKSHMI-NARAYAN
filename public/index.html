@@ -623,11 +623,24 @@
 
     @media (max-width: 768px) {
       .billing-container {
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        max-height: none;
+        overflow: visible;
       }
 
+      .billing-container > .container,
       .billing-left {
+        overflow: visible;
+        min-width: 0;
         padding-right: 0;
+      }
+
+      .billing-container > .container {
+        width: 100%;
+        flex: 0 0 auto;
+        padding: var(--spacing-sm) !important;
       }
 
       .billing-right {
@@ -635,6 +648,8 @@
         top: 0;
         height: auto;
         max-height: none;
+        overflow: visible;
+        min-width: 0;
       }
 
       .item-selector {
@@ -643,6 +658,32 @@
 
       .item-selector select, .item-selector input {
         width: 100%;
+      }
+
+      .billing-left .form-row {
+        grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr));
+        gap: var(--spacing-sm);
+      }
+
+      .billing-left .form-row label {
+        font-size: 0.8rem;
+        line-height: 1.25;
+      }
+
+      .billing-left .form-row input {
+        padding-left: var(--spacing-sm);
+        padding-right: var(--spacing-sm);
+      }
+
+      .billing-section {
+        margin-bottom: var(--spacing-sm);
+      }
+
+      .billing-section h3 {
+        font-size: 1rem;
+        line-height: 1.2;
+        margin-bottom: var(--spacing-sm);
+        padding-bottom: var(--spacing-sm);
       }
     }
 
@@ -653,6 +694,7 @@
       margin-bottom: var(--spacing-lg);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
+      flex: 0 0 auto;
     }
 
     .bill-item {
@@ -690,18 +732,22 @@
 
     @media (max-width: 768px) {
       .bill-item {
-        grid-template-columns: minmax(0, 1fr) auto auto 44px;
-        gap: var(--spacing-sm);
-        padding: var(--spacing-md) var(--spacing-sm);
-        font-size: 0.9rem;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 40px;
+        gap: 4px;
+        padding: 4px;
+        font-size: 0.78rem;
+        line-height: 1.15;
+        min-width: 0;
       }
 
       .bill-item-name {
-        grid-column: 1 / -1;
+        grid-column: auto;
       }
 
       .bill-item-value {
-        white-space: nowrap;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        font-size: 0.7rem;
       }
     }
 
@@ -1218,7 +1264,6 @@
               </div>
             </div>
             <button class="btn-success btn-lg btn-block mt-md" onclick="addRetailItem()">+ Add Item</button>
-            <div class="customer-fields"><div><label for="retailCustomerName">Customer Name (optional)</label><input id="retailCustomerName"></div><div><label for="retailCustomerPhone">Customer Phone (optional)</label><input id="retailCustomerPhone" type="tel"></div><div><label for="retailDescription">Description (optional)</label><textarea id="retailDescription" rows="2"></textarea></div><div><label for="retailNote">Note (optional)</label><textarea id="retailNote" rows="2"></textarea></div></div>
           </div>
         </div>
       </div>
@@ -1244,6 +1289,8 @@
               <span id="retailTotal">₹ 0.00</span>
             </div>
           </div>
+
+          <div class="customer-fields"><div><label for="retailCustomerName">Customer Name (optional)</label><input id="retailCustomerName"></div><div><label for="retailCustomerPhone">Customer Phone (optional)</label><input id="retailCustomerPhone" type="tel"></div><div><label for="retailDescription">Description (optional)</label><textarea id="retailDescription" rows="2"></textarea></div><div><label for="retailNote">Note (optional)</label><textarea id="retailNote" rows="2"></textarea></div></div>
 
           <div style="display: flex; gap: var(--spacing-md); flex-direction: column;">
             <button class="btn-primary btn-lg btn-block" onclick="generateRetailBill()">Generate Estimate</button>
@@ -1287,7 +1334,6 @@
               </div>
             </div>
             <button class="btn-success btn-lg btn-block mt-md" onclick="addWholesaleItem()">+ Add Item</button>
-            <div class="customer-fields"><div><label for="wholesaleCustomerName">Customer Name (optional)</label><input id="wholesaleCustomerName"></div><div><label for="wholesaleCustomerPhone">Customer Phone (optional)</label><input id="wholesaleCustomerPhone" type="tel"></div><div><label for="wholesaleDescription">Description (optional)</label><textarea id="wholesaleDescription" rows="2"></textarea></div><div><label for="wholesaleNote">Note (optional)</label><textarea id="wholesaleNote" rows="2"></textarea></div></div>
           </div>
         </div>
       </div>
@@ -1313,6 +1359,8 @@
               <span id="wholesaleTotal">₹ 0.00</span>
             </div>
           </div>
+
+          <div class="customer-fields"><div><label for="wholesaleCustomerName">Customer Name (optional)</label><input id="wholesaleCustomerName"></div><div><label for="wholesaleCustomerPhone">Customer Phone (optional)</label><input id="wholesaleCustomerPhone" type="tel"></div><div><label for="wholesaleDescription">Description (optional)</label><textarea id="wholesaleDescription" rows="2"></textarea></div><div><label for="wholesaleNote">Note (optional)</label><textarea id="wholesaleNote" rows="2"></textarea></div></div>
 
           <div style="display: flex; gap: var(--spacing-md); flex-direction: column;">
             <button class="btn-primary btn-lg btn-block" onclick="generateWholesaleBill()">Generate Estimate</button>
@@ -1769,7 +1817,7 @@
 
     function renderRetailBill() {
       retailBillItems.innerHTML = state.retailBillItems.length ? state.retailBillItems.map(item => `
-        <div class="bill-item" data-bill-item-id="${item.id}">
+        <div class="bill-item" data-bill-item-id="${item.id}" tabindex="-1">
           <div class="bill-item-name">${item.name}<small class="bill-item-meta">Quantity: ${item.quantity} | Packaging: ${item.packaging || 'Packet'}</small></div>
           <div class="bill-item-value">Rate: ₹ ${Number(item.rate).toFixed(2)}</div>
           <div class="bill-item-value">Amount: ₹ ${Number(item.amount).toFixed(2)}</div>
@@ -1788,7 +1836,7 @@
         `;
       } else {
         container.innerHTML = state.wholesaleBillItems.map(item => `
-          <div class="bill-item" data-bill-item-id="${item.id}">
+          <div class="bill-item" data-bill-item-id="${item.id}" tabindex="-1">
             <div class="bill-item-name">${item.name}<small class="bill-item-meta">Quantity: ${item.quantity} | Packaging: ${item.packaging || 'Bag'}</small></div>
             <div class="bill-item-value">Rate: ₹ ${Number(item.rate).toFixed(2)}</div>
             <div class="bill-item-value">Amount: ₹ ${Number(item.amount).toFixed(2)}</div>
@@ -1912,6 +1960,17 @@
     function selectRetailItem() { const item = state.retailItems.find(entry => entry.id == retailItemSelect.value); retailUnit.value = item?.unit || ''; retailPrice.value = item ? Number(item.mrp).toFixed(2) : ''; if (item) retailQuantity.focus(); }
     function selectWholesaleItem() { const item = state.wholesaleItems.find(entry => entry.id == wholesaleItemSelect.value); wholesaleUnit.value = item?.unit || ''; wholesalePrice.value = item ? Number(item.mrp).toFixed(2) : ''; if (item) wholesaleQuantity.focus(); }
 
+    function revealBillItem(itemId) {
+      const item = document.querySelector(`[data-bill-item-id="${itemId}"]`);
+      if (!item) return;
+      item.focus({ preventScroll: false });
+      const rect = item.getBoundingClientRect();
+      if (rect.top < 0 || rect.bottom > window.innerHeight) {
+        const targetTop = Math.max(0, window.scrollY + rect.bottom - window.innerHeight + 16);
+        window.scrollTo({ top: targetTop, behavior: 'auto' });
+      }
+    }
+
     function addRetailItem() {
       const item = state.retailItems.find(entry => entry.id == retailItemSelect.value); const quantity = Number(retailQuantity.value);
       if (!item || !Number.isFinite(quantity) || quantity <= 0) return showNotification('Select an item and enter a valid quantity', 'error');
@@ -1919,7 +1978,7 @@
       state.retailBillItems.push({ id: billItemId, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Packet', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) });
       renderRetailBill();
       retailQuantity.value = ''; retailItemSelect.value = ''; selectRetailItem();
-      document.querySelector(`[data-bill-item-id="${billItemId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      revealBillItem(billItemId);
     }
     function addWholesaleItem() {
       const item = state.wholesaleItems.find(entry => entry.id == wholesaleItemSelect.value); const quantity = Number(wholesaleQuantity.value);
@@ -1928,7 +1987,7 @@
       state.wholesaleBillItems.push({ id: billItemId, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Bag', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) });
       renderWholesaleBill();
       wholesaleQuantity.value = ''; wholesaleItemSelect.value = ''; selectWholesaleItem();
-      document.querySelector(`[data-bill-item-id="${billItemId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      revealBillItem(billItemId);
     }
 
     function renderEstimate(type, bill) {
