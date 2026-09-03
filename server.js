@@ -4,11 +4,15 @@ import bodyParser from 'body-parser';
 import pg from 'pg';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs';
+import PDFDocument from 'pdfkit';
+import sharp from 'sharp';
 
 const { Pool } = pg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const logoPath = path.join(__dirname, 'public', 'assets', 'logo.png');
 
 const app = express();
 
@@ -50,7 +54,7 @@ pool.on('error', (err) => {
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '1mb' }));
 app.use(express.static('public'));
 
 // ==================== HEALTH CHECK ====================
@@ -128,6 +132,25 @@ async function initializeDatabase() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        shop_phone TEXT,
+        shop_address TEXT,
+        instagram_name TEXT,
+        instagram_username TEXT,
+        instagram_qr TEXT,
+        logo_data TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await pool.query('ALTER TABLE retail_bills ADD COLUMN IF NOT EXISTS customer_name TEXT');
+    await pool.query('ALTER TABLE retail_bills ADD COLUMN IF NOT EXISTS customer_phone TEXT');
+    await pool.query('ALTER TABLE retail_bills ADD COLUMN IF NOT EXISTS note TEXT');
+    await pool.query('ALTER TABLE wholesale_bills ADD COLUMN IF NOT EXISTS customer_name TEXT');
+    await pool.query('ALTER TABLE wholesale_bills ADD COLUMN IF NOT EXISTS customer_phone TEXT');
+    await pool.query('ALTER TABLE wholesale_bills ADD COLUMN IF NOT EXISTS note TEXT');
+
     // Create indexes for better performance
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_retail_items_name ON retail_items(name)
@@ -162,12 +185,10 @@ function parseMoney(value) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function isValidItemPayload({ name, unit, purchase_rate, mrp, selling_price } = {}) {
+function isValidItemPayload({ name, unit, mrp } = {}) {
   return typeof name === 'string' && name.trim() !== '' &&
     typeof unit === 'string' && unit.trim() !== '' &&
-    parseMoney(purchase_rate) !== null &&
-    parseMoney(mrp) !== null &&
-    parseMoney(selling_price) !== null;
+    parseMoney(mrp) !== null;
 }
 
 function isValidBillPayload({ items, total } = {}) {
@@ -205,10 +226,37 @@ app.get('/api/wholesale-items', async (req, res) => {
   }
 });
 
+app.get('/api/settings', async (req, res) => {
+  try {
+    const result = await queryAsync('SELECT shop_phone, shop_address, instagram_name, instagram_username, instagram_qr, logo_data FROM settings WHERE id = 1');
+    res.json(result.rows[0] || {});
+  } catch (err) {
+    console.error('Error fetching settings:', err);
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
+app.put('/api/settings', async (req, res) => {
+  try {
+    const allowed = ['shop_phone', 'shop_address', 'instagram_name', 'instagram_username', 'instagram_qr', 'logo_data'];
+    const values = allowed.map(key => typeof req.body[key] === 'string' ? req.body[key].trim() : '');
+    const result = await queryAsync(`
+      INSERT INTO settings (id, ${allowed.join(', ')}, updated_at)
+      VALUES (1, $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET ${allowed.map((key, index) => `${key} = $${index + 1}`).join(', ')}, updated_at = CURRENT_TIMESTAMP
+      RETURNING shop_phone, shop_address, instagram_name, instagram_username, instagram_qr, logo_data
+    `, values);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error saving settings:', err);
+    res.status(500).json({ error: 'Failed to save settings' });
+  }
+});
+
 // Add retail item
 app.post('/api/retail-items', async (req, res) => {
   try {
-    const { name, unit, purchase_rate, mrp, selling_price } = req.body;
+    const { name, unit, mrp } = req.body;
 
     if (!isValidItemPayload(req.body)) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -216,7 +264,7 @@ app.post('/api/retail-items', async (req, res) => {
 
     const result = await queryAsync(
       'INSERT INTO retail_items (name, unit, purchase_rate, mrp, selling_price) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, unit, purchase_rate, mrp, selling_price',
-      [name.trim(), unit.trim(), parseMoney(purchase_rate), parseMoney(mrp), parseMoney(selling_price)]
+      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp)]
     );
 
     res.status(201).json(result.rows[0]);
@@ -233,7 +281,7 @@ app.post('/api/retail-items', async (req, res) => {
 // Add wholesale item
 app.post('/api/wholesale-items', async (req, res) => {
   try {
-    const { name, unit, purchase_rate, mrp, selling_price } = req.body;
+    const { name, unit, mrp } = req.body;
 
     if (!isValidItemPayload(req.body)) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -241,7 +289,7 @@ app.post('/api/wholesale-items', async (req, res) => {
 
     const result = await queryAsync(
       'INSERT INTO wholesale_items (name, unit, purchase_rate, mrp, selling_price) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, unit, purchase_rate, mrp, selling_price',
-      [name.trim(), unit.trim(), parseMoney(purchase_rate), parseMoney(mrp), parseMoney(selling_price)]
+      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp)]
     );
 
     res.status(201).json(result.rows[0]);
@@ -259,7 +307,7 @@ app.post('/api/wholesale-items', async (req, res) => {
 app.put('/api/retail-items/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, unit, purchase_rate, mrp, selling_price } = req.body;
+    const { name, unit, mrp } = req.body;
 
     if (!isValidItemPayload(req.body)) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -267,7 +315,7 @@ app.put('/api/retail-items/:id', async (req, res) => {
 
     const result = await queryAsync(
       'UPDATE retail_items SET name = $1, unit = $2, purchase_rate = $3, mrp = $4, selling_price = $5 WHERE id = $6 RETURNING id, name, unit, purchase_rate, mrp, selling_price',
-      [name.trim(), unit.trim(), parseMoney(purchase_rate), parseMoney(mrp), parseMoney(selling_price), id]
+      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp), id]
     );
 
     if (result.rows.length === 0) {
@@ -289,7 +337,7 @@ app.put('/api/retail-items/:id', async (req, res) => {
 app.put('/api/wholesale-items/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, unit, purchase_rate, mrp, selling_price } = req.body;
+    const { name, unit, mrp } = req.body;
 
     if (!isValidItemPayload(req.body)) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -297,7 +345,7 @@ app.put('/api/wholesale-items/:id', async (req, res) => {
 
     const result = await queryAsync(
       'UPDATE wholesale_items SET name = $1, unit = $2, purchase_rate = $3, mrp = $4, selling_price = $5 WHERE id = $6 RETURNING id, name, unit, purchase_rate, mrp, selling_price',
-      [name.trim(), unit.trim(), parseMoney(purchase_rate), parseMoney(mrp), parseMoney(selling_price), id]
+      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp), id]
     );
 
     if (result.rows.length === 0) {
@@ -347,7 +395,7 @@ app.post('/api/retail-bills', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const { items, total } = req.body;
+    const { items, total, customer_name, customer_phone, note } = req.body;
 
     if (!isValidBillPayload(req.body)) {
       await client.query('ROLLBACK');
@@ -370,8 +418,8 @@ app.post('/api/retail-bills', async (req, res) => {
 
     // Insert bill
     const result = await client.query(
-      'INSERT INTO retail_bills (invoice_number, date, time, items, total) VALUES ($1, $2, $3, $4, $5) RETURNING id, invoice_number, date, time, items, total',
-      [invoiceNumber, date, time, JSON.stringify(items), parseMoney(total)]
+      'INSERT INTO retail_bills (invoice_number, date, time, items, total, customer_name, customer_phone, note) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, invoice_number, date, time, items, total, customer_name, customer_phone, note',
+      [invoiceNumber, date, time, JSON.stringify(items), parseMoney(total), customer_name || null, customer_phone || null, note || null]
     );
 
     await client.query('COMMIT');
@@ -392,7 +440,7 @@ app.post('/api/wholesale-bills', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const { items, total } = req.body;
+    const { items, total, customer_name, customer_phone, note } = req.body;
 
     if (!isValidBillPayload(req.body)) {
       await client.query('ROLLBACK');
@@ -415,8 +463,8 @@ app.post('/api/wholesale-bills', async (req, res) => {
 
     // Insert bill
     const result = await client.query(
-      'INSERT INTO wholesale_bills (invoice_number, date, time, items, total) VALUES ($1, $2, $3, $4, $5) RETURNING id, invoice_number, date, time, items, total',
-      [invoiceNumber, date, time, JSON.stringify(items), parseMoney(total)]
+      'INSERT INTO wholesale_bills (invoice_number, date, time, items, total, customer_name, customer_phone, note) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, invoice_number, date, time, items, total, customer_name, customer_phone, note',
+      [invoiceNumber, date, time, JSON.stringify(items), parseMoney(total), customer_name || null, customer_phone || null, note || null]
     );
 
     await client.query('COMMIT');
@@ -453,6 +501,75 @@ app.get('/api/wholesale-bills', async (req, res) => {
   }
 });
 
+function safeText(value) {
+  return String(value || '').replace(/[<>&"']/g, character => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[character]);
+}
+
+async function getExportSettings() {
+  const result = await queryAsync('SELECT shop_phone, shop_address, instagram_name, instagram_username, instagram_qr, logo_data FROM settings WHERE id = 1');
+  return result.rows[0] || {};
+}
+
+function exportRows(bill, settings) {
+  return (bill.items || []).map(item => ({
+    name: safeText(item.name), quantity: item.quantity, unit: safeText(item.packaging || item.unit), rate: Number(item.rate || item.mrp || 0), amount: Number(item.amount || 0),
+  }));
+}
+
+function logoData(settings) {
+  if (settings.logo_data) return settings.logo_data;
+  if (fs.existsSync(logoPath)) return `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`;
+  return '';
+}
+
+app.post('/api/exports/pdf', async (req, res) => {
+  try {
+    const { bill, type } = req.body;
+    const settings = await getExportSettings();
+    const rows = exportRows(bill, settings);
+    const doc = new PDFDocument({ size: [164, Math.max(320, 240 + rows.length * 58)], margin: 12 });
+    const chunks = [];
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end', () => {
+      const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.pdf`;
+      res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` }).send(Buffer.concat(chunks));
+    });
+    const brandFontPath = 'C:\\Windows\\Fonts\\BOD_R.TTF';
+    const bodyFontPath = 'C:\\Windows\\Fonts\\arial.ttf';
+    if (fs.existsSync(brandFontPath)) doc.font(brandFontPath);
+    if (logoData(settings)) doc.image(Buffer.from(logoData(settings).split(',')[1], 'base64'), { fit: [120, 52], align: 'center' });
+    doc.fontSize(11).text('LAXMI NARAYAN', { align: 'center' });
+    doc.text('NAMKEEN', { align: 'center' });
+    if (fs.existsSync(bodyFontPath)) doc.font(bodyFontPath);
+    doc.fontSize(10).text('ESTIMATE', { align: 'center' }).moveDown(0.4);
+    doc.fontSize(8).text(`${type === 'wholesale' ? 'WHOLESALE' : 'RETAIL'}  ${bill.invoice_number || ''}`, { align: 'center' });
+    doc.text(`${bill.date || ''} ${bill.time || ''}`, { align: 'center' }).moveDown();
+    rows.forEach(row => doc.fontSize(8).text(`${row.name}\n${row.quantity} ${row.unit}   MRP ₹${row.rate.toFixed(2)}   ₹${row.amount.toFixed(2)}`));
+    doc.moveDown().fontSize(11).text(`TOTAL: ₹${Number(bill.total).toFixed(2)}`, { align: 'right' });
+    if (bill.customer_name) doc.fontSize(8).text(`Customer: ${safeText(bill.customer_name)}`);
+    if (bill.customer_phone) doc.text(`Phone: ${safeText(bill.customer_phone)}`);
+    if (bill.note) doc.text(`Note: ${safeText(bill.note)}`);
+    if (settings.shop_phone || settings.shop_address || settings.instagram_username) doc.moveDown().fontSize(7).text([settings.shop_phone, settings.shop_address, settings.instagram_username && `Instagram: ${settings.instagram_username}`].filter(Boolean).join('\n'), { align: 'center' });
+    doc.end();
+  } catch (err) { console.error('PDF export failed:', err); res.status(500).json({ error: 'Failed to create PDF' }); }
+});
+
+app.post('/api/exports/png', async (req, res) => {
+  try {
+    const { bill, type } = req.body;
+    const settings = await getExportSettings();
+    const rows = exportRows(bill, settings);
+    const lines = rows.map(row => `${row.name} | ${row.quantity} ${row.unit} | ₹${row.rate.toFixed(2)} | ₹${row.amount.toFixed(2)}`);
+    const text = ['LAXMI NARAYAN', 'NAMKEEN', 'ESTIMATE', `${type === 'wholesale' ? 'WHOLESALE' : 'RETAIL'}  ${bill.invoice_number || ''}`, ...lines, '', `TOTAL: ₹${Number(bill.total).toFixed(2)}`, bill.customer_name ? `Customer: ${safeText(bill.customer_name)}` : '', bill.customer_phone ? `Phone: ${safeText(bill.customer_phone)}` : '', bill.note ? `Note: ${safeText(bill.note)}` : ''].filter(Boolean);
+    const image = logoData(settings);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="${Math.max(300, 150 + text.length * 34)}"><rect width="100%" height="100%" fill="white"/><style>.brand{font-family:'Bodoni MT','Baskerville Old Face',Georgia,serif;fill:#111}.body{font-family:Arial,sans-serif;fill:#111}</style>${text.map((line, index) => `<text class="${index < 2 ? 'brand' : 'body'}" x="24" y="${100 + index * 34}" font-size="${index < 2 ? 24 : 18}">${safeText(line)}</text>`).join('')}</svg>`;
+    const baseImage = sharp(Buffer.from(svg));
+    const png = await (image ? baseImage.composite([{ input: await sharp(Buffer.from(image.split(',')[1], 'base64')).resize({ width: 160, height: 70, fit: 'inside' }).png().toBuffer(), left: 220, top: 12 }]) : baseImage).png().toBuffer();
+    const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.png`;
+    res.set({ 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="${filename}"` }).send(png);
+  } catch (err) { console.error('PNG export failed:', err); res.status(500).json({ error: 'Failed to create PNG' }); }
+});
+
 // ==================== ERROR HANDLING ====================
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
@@ -479,7 +596,7 @@ async function startServer() {
       console.log(`🌍 URL: http://0.0.0.0:${PORT}\n`);
     });
   } catch (err) {
-    console.error('❌ Failed to start server:', err.message);
+    console.error('❌ Failed to start server:', err.message || err);
     process.exit(1);
   }
 }

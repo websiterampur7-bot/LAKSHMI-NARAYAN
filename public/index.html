@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lakshmi Narayan - Premium Billing System</title>
+  <title>LAXMI NARAYAN NAMKEEN</title>
   <style>
     /* ==================== CSS VARIABLES / DESIGN TOKENS ==================== */
     :root {
@@ -91,6 +91,50 @@
         font-size: 1.75rem;
         margin-bottom: var(--spacing-md);
       }
+    }
+
+    /* Compact billing workspace styling */
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef4f1; position: relative; isolation: isolate; overflow-x: hidden; }
+    body::before, body::after { content: ''; position: fixed; pointer-events: none; z-index: -1; will-change: transform, opacity; }
+    body::before { inset: -18%; background: radial-gradient(ellipse at 12% 18%, rgba(210, 171, 104, 0.18), transparent 30%), radial-gradient(ellipse at 88% 76%, rgba(58, 125, 111, 0.14), transparent 32%), linear-gradient(120deg, #eef4f1, #fbfaf6 48%, #e8f1ee); background-size: 120% 120%, 120% 120%, 180% 180%; animation: ambientDrift 24s ease-in-out infinite alternate; }
+    body::after { inset: 0; opacity: 0.34; background-image: radial-gradient(circle at 18% 32%, rgba(255,255,255,0.7) 0 1px, transparent 1.5px), radial-gradient(circle at 72% 18%, rgba(255,255,255,0.55) 0 1px, transparent 1.5px), radial-gradient(circle at 82% 82%, rgba(20,75,62,0.13) 0 1px, transparent 1.5px); background-size: 116px 132px, 173px 151px, 137px 169px; animation: particleDrift 30s linear infinite; }
+    @keyframes ambientDrift { 0% { transform: translate3d(-1%, -1%, 0) scale(1); } 100% { transform: translate3d(1%, 1%, 0) scale(1.04); } }
+    @keyframes particleDrift { from { background-position: 0 0, 40px 20px, 20px 50px; } to { background-position: 26px 18px, 4px 42px, 48px 12px; } }
+    h1, h2, h3, h4, h5, h6, button, input, select, textarea { font-family: 'Segoe UI', Arial, sans-serif; letter-spacing: 0; }
+    .brand-heading { font-family: 'Bodoni MT', 'Baskerville Old Face', 'Book Antiqua', Georgia, serif; font-weight: 400; letter-spacing: 0.06em; line-height: 0.96; text-transform: uppercase; color: #142f2a; }
+    .brand-heading span { display: block; }
+    .receipt-business-name { font-family: 'Bodoni MT', 'Baskerville Old Face', 'Book Antiqua', Georgia, serif; font-weight: 400; letter-spacing: 0.06em; line-height: 1; }
+    .receipt-brand-heading { font-family: 'Bodoni MT', 'Baskerville Old Face', 'Book Antiqua', Georgia, serif; font-weight: 400; letter-spacing: 0.04em; line-height: 0.98; text-transform: uppercase; }
+    .header { background: #ffffff; border-bottom: 1px solid #dfe7e3; padding: 12px 0; }
+    .header-title { font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; color: #173c35; }
+    .dashboard-content { max-width: 760px; margin: 0 auto; }
+    #dashboardPage .container { margin-top: 0 !important; padding-top: 44px; }
+    #dashboardPage .brand-logo { display: block; width: min(62vw, 250px); height: auto; max-height: none; margin: 0 auto 26px; filter: drop-shadow(0 8px 18px rgba(29, 76, 64, 0.13)); animation: brandLogoReveal 700ms 120ms both cubic-bezier(.2,.8,.2,1); }
+    #dashboardPage .brand-heading { margin: 0 auto 30px; font-size: clamp(1.5rem, 4vw, 2.25rem); text-align: center; text-shadow: 0 2px 18px rgba(194, 139, 69, 0.12); animation: headingReveal 600ms 260ms both ease-out; }
+    @keyframes brandLogoReveal { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes headingReveal { from { opacity: 0; transform: translateY(8px); letter-spacing: .14em; } to { opacity: 1; transform: translateY(0); letter-spacing: .06em; } }
+    .dashboard-subtitle { display: none; }
+    .action-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 0; }
+    .card.action-card { min-height: 132px; padding: 22px 18px; border-radius: 10px; border-color: #dce6e1; box-shadow: 0 5px 18px rgba(24, 55, 47, 0.06); align-items: flex-start; justify-content: center; gap: 8px; }
+    .card.action-card:hover { transform: translateY(-2px); box-shadow: 0 9px 22px rgba(24, 55, 47, 0.1); }
+    .card.action-card h2 { font-size: 1.08rem; text-align: left; color: #173c35; }
+    .card.action-card h2::first-letter { color: #c28b45; }
+    .card.action-card p { font-size: 0.78rem; line-height: 1.45; }
+    button, .button { transition: transform 160ms ease, box-shadow 220ms ease, background-color 220ms ease, border-color 220ms ease; }
+    button:active, .button:active { transform: translateY(1px) scale(0.985); }
+    .modal-overlay.active .modal { animation: modalEnter 220ms cubic-bezier(.2,.8,.2,1); }
+    @keyframes modalEnter { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .notification { animation: notificationEnter 260ms ease-out; }
+    @keyframes notificationEnter { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+    .splash { background: #ffffff; }
+    .splash img { width: min(66vw, 290px); }
+    .brand-logo { height: auto; }
+    @media (max-width: 600px) {
+      #dashboardPage .container { padding: 28px 16px 24px; }
+      #dashboardPage .brand-logo { width: min(76vw, 250px); margin-bottom: 18px; }
+      #dashboardPage .brand-heading { margin-bottom: 22px; font-size: 1.55rem; }
+      .action-buttons { grid-template-columns: 1fr; gap: 10px; }
+      .card.action-card { min-height: 102px; padding: 18px 16px; }
     }
 
     h1 { font-size: 2rem; }
@@ -792,7 +836,7 @@
       margin-bottom: var(--spacing-sm);
     }
 
-    .receipt-invoice-info {
+    .receipt-estimate-info {
       font-size: 0.85rem;
       text-align: center;
       margin-bottom: var(--spacing-md);
@@ -850,6 +894,7 @@
         padding: 0;
         page-break-after: always;
       }
+      body::before, body::after { display: none !important; }
     }
 
     /* ==================== ADMIN PANEL ==================== */
@@ -937,6 +982,15 @@
     .hidden { display: none; }
     .opacity-50 { opacity: 0.5; }
 
+    .splash { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: #102f2a; animation: splashOut 0.5s ease 2.2s forwards; pointer-events: none; }
+    .splash img { width: min(62vw, 280px); animation: logoRise 1.3s cubic-bezier(.22,.8,.32,1) forwards; }
+    @keyframes logoRise { from { opacity: 0; transform: translateY(90px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes splashOut { to { opacity: 0; visibility: hidden; } }
+    .brand-logo { max-width: 180px; max-height: 78px; object-fit: contain; }
+    .receipt-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 16px; }
+    .customer-fields { display: grid; gap: 12px; margin-top: 16px; }
+    .settings-grid { max-width: 720px; }
+
     /* ==================== RESPONSIVE ==================== */
     @media (max-width: 768px) {
       .container {
@@ -978,13 +1032,36 @@
         grid-template-columns: 1fr;
       }
     }
+
+    #dashboardPage .action-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 0; }
+    #dashboardPage .card.action-card { min-height: 132px; padding: 22px 18px; border-radius: 10px; border-color: rgba(207, 224, 217, 0.9); background: rgba(255, 255, 255, 0.68); box-shadow: 0 5px 18px rgba(24, 55, 47, 0.06); align-items: flex-start; justify-content: center; gap: 8px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); opacity: 0; animation: cardReveal 500ms both cubic-bezier(.2,.75,.2,1); }
+    #dashboardPage .card.action-card:nth-child(1) { animation-delay: 380ms; }
+    #dashboardPage .card.action-card:nth-child(2) { animation-delay: 450ms; }
+    #dashboardPage .card.action-card:nth-child(3) { animation-delay: 520ms; }
+    #dashboardPage .card.action-card:nth-child(4) { animation-delay: 590ms; }
+    @keyframes cardReveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    #dashboardPage .card.action-card:hover { transform: translateY(-2px); box-shadow: 0 9px 22px rgba(24, 55, 47, 0.1); }
+    #dashboardPage .card.action-card h2 { font-size: 1.08rem; text-align: left; color: #173c35; }
+    #dashboardPage .card.action-card p { font-size: 0.78rem; line-height: 1.45; }
+    @media (max-width: 600px) {
+      #dashboardPage .action-buttons { grid-template-columns: 1fr; gap: 10px; }
+      #dashboardPage .card.action-card { min-height: 102px; padding: 18px 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+      body::before, body::after { animation: none; }
+      .splash { animation: none; opacity: 0; visibility: hidden; }
+      #dashboardPage .brand-logo, #dashboardPage .brand-heading { animation: none; opacity: 1; transform: none; }
+      #dashboardPage .card.action-card { animation: none; opacity: 1; transform: none; }
+    }
   </style>
 </head>
 <body>
+  <div class="splash" aria-label="LAXMI NARAYAN NAMKEEN"><img src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"></div>
   <!-- HEADER -->
   <div class="header">
     <div class="header-content">
-      <div class="header-title" id="headerTitle">Lakshmi Narayan</div>
+      <div class="header-title" id="headerTitle" aria-hidden="true"></div>
       <div class="nav-buttons" id="navButtons"></div>
     </div>
   </div>
@@ -993,23 +1070,27 @@
   <div class="page active" id="dashboardPage">
     <div class="container" style="max-width: 900px; margin-top: var(--spacing-2xl);">
       <div class="dashboard-content">
-        <h1 class="brand-name">LAKSHMI NARAYAN</h1>
-        <p class="dashboard-subtitle">Premium Business Billing System</p>
+        <img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN">
+        <h1 class="brand-heading"><span>LAXMI NARAYAN</span><span>NAMKEEN</span></h1>
 
         <div class="action-buttons">
           <div class="card action-card" onclick="navigateTo('retailBilling')">
-            <h2>🛒 Retail Billing</h2>
+            <h2>Retail Billing</h2>
             <p class="text-secondary">Fast billing for walk-in customers</p>
           </div>
 
           <div class="card action-card" onclick="navigateTo('wholesaleBilling')">
-            <h2>📦 Wholesale Billing</h2>
+            <h2>Wholesale Billing</h2>
             <p class="text-secondary">Bulk orders for dealers and suppliers</p>
           </div>
 
           <div class="card action-card" onclick="navigateTo('adminPanel')">
-            <h2>⚙️ Admin Panel</h2>
+            <h2>Admin Panel</h2>
             <p class="text-secondary">Manage products and inventory</p>
+          </div>
+          <div class="card action-card" onclick="navigateTo('settings')">
+            <h2>Optional Settings</h2>
+            <p class="text-secondary">Shop and social details</p>
           </div>
         </div>
       </div>
@@ -1071,6 +1152,20 @@
     </div>
   </div>
 
+  <div class="page" id="settingsPage">
+    <div class="container settings-grid">
+      <h1>Optional Settings</h1>
+      <p class="text-secondary">Leave any field empty to keep it off the estimate.</p>
+      <form class="card" onsubmit="saveSettings(event)">
+        <div class="form-row"><div class="form-group"><label for="shopPhone">Shop phone number</label><input id="shopPhone" type="tel"></div><div class="form-group"><label for="shopAddress">Shop address</label><textarea id="shopAddress" rows="2"></textarea></div></div>
+        <div class="form-row"><div class="form-group"><label for="instagramName">Instagram account/name</label><input id="instagramName"></div><div class="form-group"><label for="instagramUsername">Instagram username</label><input id="instagramUsername"></div></div>
+        <div class="form-group"><label for="instagramQr">Instagram QR code URL or data</label><input id="instagramQr" placeholder="Optional image URL or data URL"></div>
+        <div class="form-group"><label for="logoFile">Optional logo management</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp"></div>
+        <div id="settingsMessage"></div><button class="btn-primary" type="submit">Save Optional Settings</button>
+      </form>
+    </div>
+  </div>
+
   <!-- RETAIL BILLING PAGE -->
   <div class="page" id="retailBillingPage">
     <div class="billing-container">
@@ -1103,6 +1198,7 @@
               </div>
             </div>
             <button class="btn-success btn-lg btn-block mt-md" onclick="addRetailItem()">+ Add Item</button>
+            <div class="customer-fields"><div><label for="retailCustomerName">Customer Name (optional)</label><input id="retailCustomerName"></div><div><label for="retailCustomerPhone">Customer Phone (optional)</label><input id="retailCustomerPhone" type="tel"></div><div><label for="retailNote">Description / Note (optional)</label><textarea id="retailNote" rows="2"></textarea></div></div>
           </div>
         </div>
       </div>
@@ -1130,8 +1226,8 @@
           </div>
 
           <div style="display: flex; gap: var(--spacing-md); flex-direction: column;">
-            <button class="btn-primary btn-lg btn-block" onclick="generateRetailBill()">📄 Generate Bill</button>
-            <button class="btn-secondary btn-lg btn-block" onclick="clearRetailBill()">🔄 Clear Bill</button>
+            <button class="btn-primary btn-lg btn-block" onclick="generateRetailBill()">Generate Estimate</button>
+            <button class="btn-secondary btn-lg btn-block" onclick="clearRetailBill()">Clear Estimate</button>
             <button class="btn-secondary btn-lg btn-block" onclick="navigateTo('dashboard')">← Back</button>
           </div>
         </div>
@@ -1171,6 +1267,7 @@
               </div>
             </div>
             <button class="btn-success btn-lg btn-block mt-md" onclick="addWholesaleItem()">+ Add Item</button>
+            <div class="customer-fields"><div><label for="wholesaleCustomerName">Customer Name (optional)</label><input id="wholesaleCustomerName"></div><div><label for="wholesaleCustomerPhone">Customer Phone (optional)</label><input id="wholesaleCustomerPhone" type="tel"></div><div><label for="wholesaleNote">Description / Note (optional)</label><textarea id="wholesaleNote" rows="2"></textarea></div></div>
           </div>
         </div>
       </div>
@@ -1198,8 +1295,8 @@
           </div>
 
           <div style="display: flex; gap: var(--spacing-md); flex-direction: column;">
-            <button class="btn-primary btn-lg btn-block" onclick="generateWholesaleBill()">📄 Generate Bill</button>
-            <button class="btn-secondary btn-lg btn-block" onclick="clearWholesaleBill()">🔄 Clear Bill</button>
+            <button class="btn-primary btn-lg btn-block" onclick="generateWholesaleBill()">Generate Estimate</button>
+            <button class="btn-secondary btn-lg btn-block" onclick="clearWholesaleBill()">Clear Estimate</button>
             <button class="btn-secondary btn-lg btn-block" onclick="navigateTo('dashboard')">← Back</button>
           </div>
         </div>
@@ -1210,8 +1307,7 @@
   <!-- RECEIPT PAGE (for printing) -->
   <div class="page" id="receiptPage">
     <div style="padding: var(--spacing-lg); text-align: center;">
-      <button class="btn-primary btn-lg" onclick="window.print()">🖨️ Print Receipt</button>
-      <button class="btn-secondary btn-lg ml-md" onclick="navigateTo('dashboard')">← Back to Dashboard</button>
+      <div class="receipt-actions"><button class="btn-primary" onclick="downloadEstimate('pdf')">Download PDF</button><button class="btn-secondary" onclick="downloadEstimate('png')">Download PNG</button><button class="btn-secondary" onclick="printEstimate()">Print Estimate</button><button class="btn-secondary" onclick="navigateTo('dashboard')">Back to Dashboard</button></div>
     </div>
     <div id="receiptContainer"></div>
   </div>
@@ -1233,31 +1329,19 @@
           <label for="itemUnit">Unit *</label>
           <select id="itemUnit" required>
             <option value="">Select unit...</option>
-            <option value="kg">Kilogram (kg)</option>
-            <option value="g">Gram (g)</option>
-            <option value="ltr">Liter (Ltr)</option>
-            <option value="ml">Milliliter (ml)</option>
-            <option value="pcs">Pieces (pcs)</option>
-            <option value="box">Box</option>
-            <option value="dozen">Dozen</option>
+            <option value="Gram">Gram</option>
+            <option value="Kilogram">Kilogram</option>
+            <option value="Packet">Packet</option>
+            <option value="Bag">Bag</option>
           </select>
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label for="purchaseRate">Purchase Rate (₹) *</label>
-            <input type="number" id="purchaseRate" required step="0.01" min="0" placeholder="0.00">
-          </div>
-
-          <div class="form-group">
             <label for="mrp">MRP (₹) *</label>
             <input type="number" id="mrp" required step="0.01" min="0" placeholder="0.00">
           </div>
 
-          <div class="form-group">
-            <label for="sellingPrice">Selling Price (₹) *</label>
-            <input type="number" id="sellingPrice" required step="0.01" min="0" placeholder="0.00">
-          </div>
         </div>
 
         <div id="itemFormMessage"></div>
@@ -1428,8 +1512,7 @@
                 <tr>
                   <th>Item Name</th>
                   <th>Unit</th>
-                  <th>Purchase Rate</th>
-                  <th>Selling Price</th>
+                  <th>MRP</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1438,8 +1521,7 @@
                   <tr>
                     <td><strong>${item.name}</strong></td>
                     <td>${item.unit}</td>
-                    <td>₹ ${parseFloat(item.purchase_rate).toFixed(2)}</td>
-                    <td>₹ ${parseFloat(item.selling_price).toFixed(2)}</td>
+                    <td>₹ ${parseFloat(item.mrp).toFixed(2)}</td>
                     <td>
                       <button class="btn-secondary btn-sm" onclick="editItem('retail', ${item.id})">Edit</button>
                       <button class="btn-danger btn-sm" onclick="deleteItem('retail', ${item.id})">Delete</button>
@@ -1468,8 +1550,7 @@
                 <tr>
                   <th>Item Name</th>
                   <th>Unit</th>
-                  <th>Purchase Rate</th>
-                  <th>Selling Price</th>
+                  <th>MRP</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1478,8 +1559,7 @@
                   <tr>
                     <td><strong>${item.name}</strong></td>
                     <td>${item.unit}</td>
-                    <td>₹ ${parseFloat(item.purchase_rate).toFixed(2)}</td>
-                    <td>₹ ${parseFloat(item.selling_price).toFixed(2)}</td>
+                    <td>₹ ${parseFloat(item.mrp).toFixed(2)}</td>
                     <td>
                       <button class="btn-secondary btn-sm" onclick="editItem('wholesale', ${item.id})">Edit</button>
                       <button class="btn-danger btn-sm" onclick="deleteItem('wholesale', ${item.id})">Delete</button>
@@ -1737,6 +1817,14 @@
         select.appendChild(option);
       });
     }
+    function renderAdminItems() {
+      const render = (items, containerId, searchId, type) => { const query = document.getElementById(searchId).value.toLowerCase(); const visible = items.filter(item => item.name.toLowerCase().includes(query)); document.getElementById(containerId).innerHTML = visible.length ? `<div class="table-container"><table><thead><tr><th>Item Name</th><th>Unit</th><th>MRP</th><th>Actions</th></tr></thead><tbody>${visible.map(item => `<tr><td><strong>${item.name}</strong></td><td>${item.unit}</td><td>₹ ${Number(item.mrp).toFixed(2)}</td><td><button class="btn-secondary btn-sm" onclick="editItem('${type}', ${item.id})">Edit</button> <button class="btn-danger btn-sm" onclick="deleteItem('${type}', ${item.id})">Delete</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty-state"><p>No matching items</p></div>'; };
+      render(state.retailItems, 'retailItemsContainer', 'retailSearch', 'retail'); render(state.wholesaleItems, 'wholesaleItemsContainer', 'wholesaleSearch', 'wholesale');
+    }
+    function editItem(type, id) { const item = (type === 'retail' ? state.retailItems : state.wholesaleItems).find(entry => entry.id === id); if (!item) return; state.editingItemType = type; state.editingItemId = id; itemModalTitle.textContent = `Edit ${type === 'retail' ? 'Retail' : 'Wholesale'} Item`; itemName.value = item.name; itemUnit.value = item.unit; mrp.value = item.mrp; itemFormMessage.innerHTML = ''; itemModal.classList.add('active'); }
+    function openAddItemModal(type) { state.editingItemType = type; state.editingItemId = null; itemModalTitle.textContent = `Add ${type === 'retail' ? 'Retail' : 'Wholesale'} Item`; itemName.value = ''; itemUnit.value = ''; mrp.value = ''; itemFormMessage.innerHTML = ''; itemModal.classList.add('active'); }
+    function renderRetailBill() { retailBillItems.innerHTML = state.retailBillItems.length ? state.retailBillItems.map(item => `<div class="bill-item"><div class="bill-item-name">${item.name}<small>${item.quantity} ${item.unit}<br>${item.quantity} Packet</small></div><div class="bill-item-value">₹ ${Number(item.rate).toFixed(2)}</div><div class="bill-item-value">₹ ${Number(item.amount).toFixed(2)}</div><button class="btn-danger btn-sm btn-icon" onclick="removeRetailItem('${item.id}')">×</button></div>`).join('') : '<div class="empty-state"><p>No items added yet</p></div>'; updateRetailTotal(); }
+    function renderWholesaleBill() { wholesaleBillItems.innerHTML = state.wholesaleBillItems.length ? state.wholesaleBillItems.map(item => `<div class="bill-item"><div class="bill-item-name">${item.name}<small>${item.quantity} ${item.unit}<br>${item.quantity} Bag</small></div><div class="bill-item-value">₹ ${Number(item.rate).toFixed(2)}</div><div class="bill-item-value">₹ ${Number(item.amount).toFixed(2)}</div><button class="btn-danger btn-sm btn-icon" onclick="removeWholesaleItem('${item.id}')">×</button></div>`).join('') : '<div class="empty-state"><p>No items added yet</p></div>'; updateWholesaleTotal(); }
 
     function selectWholesaleItem() {
       const select = document.getElementById('wholesaleItemSelect');
@@ -1859,12 +1947,12 @@
       const receiptHTML = `
         <div class="receipt-container">
           <div class="receipt-header">
-            <div class="receipt-business-name">LAKSHMI NARAYAN</div>
+            <div class="receipt-business-name">LAXMI NARAYAN</div>
             <div style="font-size: 0.85rem; color: var(--text-secondary);">${type === 'retail' ? 'RETAIL' : 'WHOLESALE'} BILL</div>
           </div>
 
-          <div class="receipt-invoice-info">
-            <div><strong>Invoice #${bill.invoice_number}</strong></div>
+          <div class="receipt-estimate-info">
+            <div><strong>Estimate #${bill.invoice_number}</strong></div>
             <div>${bill.date} | ${time}</div>
           </div>
 
@@ -1936,6 +2024,74 @@
         closeItemModal();
       }
     });
+
+    const originalNavigateTo = navigateTo;
+    navigateTo = function(page) {
+      originalNavigateTo(page);
+      if (page === 'settings') loadSettings();
+    };
+
+    async function loadSettings() {
+      try {
+        const settings = await api.request('/api/settings');
+        ['shopPhone', 'shopAddress', 'instagramName', 'instagramUsername', 'instagramQr'].forEach(id => { document.getElementById(id).value = settings[id.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)] || ''; });
+      } catch (err) { showNotification('Could not load settings', 'error'); }
+    }
+
+    async function saveSettings(event) {
+      event.preventDefault();
+      const selectedLogo = logoFile.files[0]; const logoData = selectedLogo ? await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(selectedLogo); }) : '';
+      const data = { shop_phone: shopPhone.value, shop_address: shopAddress.value, instagram_name: instagramName.value, instagram_username: instagramUsername.value, instagram_qr: instagramQr.value, logo_data: logoData };
+      try { await api.request('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); settingsMessage.innerHTML = '<div class="form-success">Settings saved</div>'; }
+      catch (err) { settingsMessage.innerHTML = `<div class="form-error">${err.message}</div>`; }
+    }
+
+    function saveItem(event) {
+      event.preventDefault();
+      const data = { name: itemName.value, unit: itemUnit.value, mrp: parseFloat(mrp.value) };
+      const request = state.editingItemId
+        ? (state.editingItemType === 'retail' ? api.updateRetailItem(state.editingItemId, data) : api.updateWholesaleItem(state.editingItemId, data))
+        : (state.editingItemType === 'retail' ? api.addRetailItem(data) : api.addWholesaleItem(data));
+      request.then(() => { closeItemModal(); showNotification('Item saved', 'success'); return loadAdminItems(); }).catch(err => { itemFormMessage.innerHTML = `<div class="form-error">${err.message}</div>`; });
+    }
+
+    function renderRetailItemSelect() {
+      retailItemSelect.innerHTML = '<option value="">Choose an item...</option>';
+      state.retailItems.forEach(item => { const option = new Option(item.name, item.id); option.dataset.price = item.mrp; retailItemSelect.add(option); });
+    }
+    function renderWholesaleItemSelect() {
+      wholesaleItemSelect.innerHTML = '<option value="">Choose an item...</option>';
+      state.wholesaleItems.forEach(item => { const option = new Option(item.name, item.id); option.dataset.price = item.mrp; wholesaleItemSelect.add(option); });
+    }
+    function selectRetailItem() { const item = state.retailItems.find(entry => entry.id == retailItemSelect.value); retailUnit.value = item?.unit || ''; retailPrice.value = item ? Number(item.mrp).toFixed(2) : ''; if (item) retailQuantity.focus(); }
+    function selectWholesaleItem() { const item = state.wholesaleItems.find(entry => entry.id == wholesaleItemSelect.value); wholesaleUnit.value = item?.unit || ''; wholesalePrice.value = item ? Number(item.mrp).toFixed(2) : ''; if (item) wholesaleQuantity.focus(); }
+
+    function addRetailItem() {
+      const item = state.retailItems.find(entry => entry.id == retailItemSelect.value); const quantity = Number(retailQuantity.value);
+      if (!item || !Number.isFinite(quantity) || quantity <= 0) return showNotification('Select an item and enter a valid quantity', 'error');
+      state.retailBillItems.push({ id: `${Date.now()}-${Math.random()}`, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Packet', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) }); renderRetailBill(); retailQuantity.value = ''; retailItemSelect.value = ''; selectRetailItem();
+    }
+    function addWholesaleItem() {
+      const item = state.wholesaleItems.find(entry => entry.id == wholesaleItemSelect.value); const quantity = Number(wholesaleQuantity.value);
+      if (!item || !Number.isFinite(quantity) || quantity <= 0) return showNotification('Select an item and enter a valid quantity', 'error');
+      state.wholesaleBillItems.push({ id: `${Date.now()}-${Math.random()}`, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Bag', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) }); renderWholesaleBill(); wholesaleQuantity.value = ''; wholesaleItemSelect.value = ''; selectWholesaleItem();
+    }
+
+    function renderEstimate(type, bill) {
+      const rows = (bill.items || []).map(item => `<div class="receipt-item"><div>${item.name}<small>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</small></div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
+      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-brand-heading"><span>LAXMI NARAYAN</span><span>NAMKEEN</span></div><strong>ESTIMATE</strong></div><div class="receipt-estimate-info">${bill.invoice_number || ''}<br>${bill.date || ''} | ${bill.time || ''}</div><div class="receipt-items">${rows}</div><div class="receipt-total">TOTAL: ₹ ${Number(bill.total).toFixed(2)}</div>${bill.customer_name ? `<p>Customer: ${bill.customer_name}</p>` : ''}${bill.customer_phone ? `<p>Phone: ${bill.customer_phone}</p>` : ''}${bill.note ? `<p>Note: ${bill.note}</p>` : ''}<div class="receipt-footer">Thank you for your business</div></div>`;
+      state.lastEstimate = { type, bill }; navigateTo('receipt');
+    }
+    async function generateEstimate(type) {
+      const items = type === 'retail' ? state.retailBillItems : state.wholesaleBillItems; const prefix = type === 'retail' ? 'retail' : 'wholesale';
+      if (!items.length) return showNotification('Please add items to the estimate', 'error');
+      try { const bill = await api.request(`/api/${prefix}-bills`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, total: items.reduce((sum, item) => sum + item.amount, 0), customer_name: document.getElementById(`${prefix}CustomerName`).value.trim(), customer_phone: document.getElementById(`${prefix}CustomerPhone`).value.trim(), note: document.getElementById(`${prefix}Note`).value.trim() }) }); renderEstimate(type, bill); }
+      catch (err) { showNotification(err.message || 'Could not generate estimate', 'error'); }
+    }
+    generateRetailBill = () => generateEstimate('retail');
+    generateWholesaleBill = () => generateEstimate('wholesale');
+    async function downloadEstimate(format) { if (!state.lastEstimate) return; try { const response = await fetch(`/api/exports/${format}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.lastEstimate) }); if (!response.ok) throw new Error('Export failed'); const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.${format}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); } catch (err) { showNotification(`Could not download ${format.toUpperCase()}`, 'error'); } }
+    function printEstimate() { window.print(); }
   </script>
 </body>
 </html>
