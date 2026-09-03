@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LAXMI NARAYAN NAMKEEN</title>
   <style>
     /* ==================== CSS VARIABLES / DESIGN TOKENS ==================== */
@@ -99,6 +99,7 @@
     body::before { inset: -18%; background: radial-gradient(ellipse at 12% 18%, rgba(210, 171, 104, 0.18), transparent 30%), radial-gradient(ellipse at 88% 76%, rgba(58, 125, 111, 0.14), transparent 32%), linear-gradient(120deg, #eef4f1, #fbfaf6 48%, #e8f1ee); background-size: 120% 120%, 120% 120%, 180% 180%; animation: ambientDrift 36s ease-in-out infinite alternate; }
     body::after { inset: 0; opacity: 0.34; background-image: radial-gradient(circle at 18% 32%, rgba(255,255,255,0.7) 0 1px, transparent 1.5px), radial-gradient(circle at 72% 18%, rgba(255,255,255,0.55) 0 1px, transparent 1.5px), radial-gradient(circle at 82% 82%, rgba(20,75,62,0.13) 0 1px, transparent 1.5px); background-size: 116px 132px, 173px 151px, 137px 169px; animation: particleDrift 45s linear infinite; }
     body.billing-active::before, body.billing-active::after { animation-play-state: paused; }
+    button, .card.action-card { touch-action: manipulation; }
     @keyframes ambientDrift { 0% { transform: translate3d(-1%, -1%, 0) scale(1); } 100% { transform: translate3d(1%, 1%, 0) scale(1.04); } }
     @keyframes particleDrift { from { background-position: 0 0, 40px 20px, 20px 50px; } to { background-position: 26px 18px, 4px 42px, 48px 12px; } }
     h1, h2, h3, h4, h5, h6, button, input, select, textarea { font-family: 'Segoe UI', Arial, sans-serif; letter-spacing: 0; }
@@ -816,6 +817,7 @@
     /* ==================== RECEIPT / PRINT ==================== */
     .receipt-container {
       width: 80mm;
+      max-width: 100%;
       margin: 0 auto;
       padding: var(--spacing-lg);
       background: var(--bg-secondary);
@@ -1001,6 +1003,8 @@
       body {
         padding-bottom: env(safe-area-inset-bottom);
       }
+
+      .billing-left, .billing-right { -webkit-overflow-scrolling: touch; }
 
       .table-container {
         overflow-x: hidden;
@@ -1308,7 +1312,7 @@
   <!-- RECEIPT PAGE (for printing) -->
   <div class="page" id="receiptPage">
     <div style="padding: var(--spacing-lg); text-align: center;">
-      <div class="receipt-actions"><button class="btn-primary" onclick="downloadEstimate('pdf')">Download PDF</button><button class="btn-secondary" onclick="downloadEstimate('png')">Download PNG</button><button class="btn-secondary" onclick="printEstimate()">Print Estimate</button><button class="btn-secondary" onclick="navigateTo('dashboard')">Back to Dashboard</button></div>
+      <div class="receipt-actions"><button class="btn-primary" onclick="downloadEstimate('pdf')">Download PDF</button><button class="btn-secondary" onclick="downloadEstimate('png')">Download PNG</button><button class="btn-secondary" onclick="printEstimate()">Print Estimate</button><button class="btn-secondary" onclick="goToDashboard()">Back to Dashboard</button></div>
     </div>
     <div id="receiptContainer"></div>
   </div>
@@ -1355,6 +1359,7 @@
     </div>
   </div>
 
+  <script src="assets/html2canvas.min.js"></script>
   <script>
     // ==================== STATE MANAGEMENT ====================
     const state = {
@@ -1483,6 +1488,12 @@
         window.history.replaceState({ page: 'dashboard' }, '', window.location.href);
         renderPage('dashboard');
       }
+    }
+
+    function goToDashboard() {
+      if (state.currentPage === 'dashboard') return;
+      window.history.replaceState({ page: 'dashboard' }, '', window.location.href);
+      renderPage('dashboard');
     }
 
     function updateHeader() {
@@ -2007,7 +2018,7 @@
       setTimeout(() => {
         window.print();
         setTimeout(() => {
-          navigateTo('dashboard');
+          goToDashboard();
           if (type === 'retail') {
             clearRetailBill();
           } else {
@@ -2106,7 +2117,9 @@
     function renderEstimate(type, bill) {
       const rows = (bill.items || []).map(item => `<div class="receipt-item"><div>${item.name}<small>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</small></div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
       receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-brand-heading"><span>LAXMI NARAYAN</span><span>NAMKEEN</span></div><strong>ESTIMATE</strong></div><div class="receipt-estimate-info">${bill.invoice_number || ''}<br>${bill.date || ''} | ${bill.time || ''}</div><div class="receipt-items">${rows}</div><div class="receipt-total">TOTAL: ₹ ${Number(bill.total).toFixed(2)}</div>${bill.customer_name ? `<p>Customer: ${bill.customer_name}</p>` : ''}${bill.customer_phone ? `<p>Phone: ${bill.customer_phone}</p>` : ''}${bill.description ? `<p>Description: ${bill.description}</p>` : ''}${bill.note ? `<p>Note: ${bill.note}</p>` : ''}</div>`;
-      state.lastEstimate = { type, bill }; navigateTo('receipt');
+      state.lastEstimate = { type, bill };
+      window.history.replaceState({ page: 'receipt' }, '', window.location.href);
+      renderPage('receipt');
     }
     async function generateEstimate(type) {
       const items = type === 'retail' ? state.retailBillItems : state.wholesaleBillItems; const prefix = type === 'retail' ? 'retail' : 'wholesale';
@@ -2119,7 +2132,43 @@
     }
     generateRetailBill = () => generateEstimate('retail');
     generateWholesaleBill = () => generateEstimate('wholesale');
-    async function downloadEstimate(format) { if (!state.lastEstimate) return; try { const response = await fetch(`/api/exports/${format}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.lastEstimate) }); if (!response.ok) throw new Error('Export failed'); const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.${format}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); } catch (err) { showNotification(`Could not download ${format.toUpperCase()}`, 'error'); } }
+    async function deliverExport(blob, format) {
+      const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.${format}`;
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS && navigator.share && navigator.canShare) {
+        const file = new File([blob], filename, { type: blob.type });
+        if (navigator.canShare({ files: [file] })) {
+          try { await navigator.share({ files: [file], title: 'Estimate' }); return; }
+          catch (error) { if (error.name === 'AbortError') return; }
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      if (isIOS) {
+        const opened = window.open(url, '_blank');
+        if (!opened) window.location.href = url;
+      } else {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function downloadEstimate(format) {
+      if (!state.lastEstimate) return;
+      try {
+        await document.fonts.ready;
+        const receipt = document.querySelector('#receiptPage .receipt-container');
+        if (!receipt) throw new Error('Receipt preview is unavailable');
+        const canvas = await html2canvas(receipt, { backgroundColor: '#ffffff', scale: 4, useCORS: true, logging: false });
+        const receiptImage = canvas.toDataURL('image/png');
+        const response = await fetch(`/api/exports/${format}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiptImage, receiptWidth: canvas.width, receiptHeight: canvas.height }) });
+        if (!response.ok) throw new Error('Export failed');
+        await deliverExport(await response.blob(), format);
+      } catch (err) { showNotification(`Could not download ${format.toUpperCase()}`, 'error'); }
+    }
     function printEstimate() { window.print(); }
   </script>
 </body>

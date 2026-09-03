@@ -2,18 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import pg from 'pg';
-import { fileURLToPath } from 'url';
-import path from 'path';
-import fs from 'fs';
 import PDFDocument from 'pdfkit';
-import sharp from 'sharp';
-import * as fontkit from 'fontkit';
 
 const { Pool } = pg;
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const logoPath = path.join(__dirname, 'public', 'assets', 'logo.png');
 
 const app = express();
 
@@ -55,7 +46,7 @@ pool.on('error', (err) => {
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json({ limit: '1mb' }));
+app.use(bodyParser.json({ limit: '8mb' }));
 app.use(express.static('public'));
 
 // ==================== HEALTH CHECK ====================
@@ -506,121 +497,31 @@ function safeText(value) {
   return String(value || '').replace(/[<>&"']/g, character => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[character]);
 }
 
-async function getExportSettings() {
-  const result = await queryAsync('SELECT shop_phone, shop_address, instagram_name, instagram_username, instagram_qr, logo_data FROM settings WHERE id = 1');
-  return result.rows[0] || {};
-}
-
-function exportRows(bill, settings) {
-  return (bill.items || []).map(item => ({
-    name: safeText(item.name), quantity: item.quantity, unit: safeText(item.packaging || item.unit), rate: Number(item.rate || item.mrp || 0), amount: Number(item.amount || 0),
-  }));
-}
-
-function xmlText(value) {
-  return String(value || '').replace(/[<>&"']/g, character => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[character]);
-}
-
-function exportDetails(bill) {
-  const storedNote = String(bill.note || '');
-  const description = String(bill.description || (storedNote.match(/^Description: (.*)$/m) || [])[1] || '');
-  const note = String(bill.note && storedNote.replace(/^Description: .*\n?/, '').replace(/^Note: /, '') || '');
-  return { description, note };
-}
-
-function containsDevanagari(value) {
-  return /[\u0900-\u097F]/.test(String(value || ''));
-}
-
-function pdfFont(doc, value, brand = false) {
-  const brandFontPath = 'C:\\Windows\\Fonts\\BOD_R.TTF';
-  const bodyFontPath = 'C:\\Windows\\Fonts\\cour.ttf';
-  const devanagariFontPath = 'C:\\Windows\\Fonts\\Nirmala.ttc';
-  if (brand && fs.existsSync(brandFontPath)) {
-    doc.font(brandFontPath);
-  } else if (!brand && containsDevanagari(value) && fs.existsSync(devanagariFontPath)) {
-    const devanagariFont = fontkit.openSync(devanagariFontPath).fonts.find(font => font.familyName === 'Nirmala UI' && font.subfamilyName === 'Regular');
-    if (devanagariFont) doc.font(devanagariFont);
-  } else if (fs.existsSync(bodyFontPath)) {
-    doc.font(bodyFontPath);
-  }
-}
-
-function logoData(settings) {
-  if (settings.logo_data) return settings.logo_data;
-  if (fs.existsSync(logoPath)) return `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`;
-  return '';
-}
-
 app.post('/api/exports/pdf', async (req, res) => {
   try {
-    const { bill, type } = req.body;
-    const settings = await getExportSettings();
-    const rows = exportRows(bill, settings);
-    const details = exportDetails(bill);
-    const receiptWidth = 226.77;
-    const receiptHeight = Math.max(320, 260 + rows.length * 42 + (details.description ? 14 : 0) + (details.note ? 14 : 0));
-    const doc = new PDFDocument({ size: [receiptWidth, receiptHeight], margin: 18 });
+    const { receiptImage, receiptWidth, receiptHeight } = req.body;
+    if (typeof receiptImage !== 'string' || !receiptImage.startsWith('data:image/png;base64,') || !Number.isFinite(Number(receiptWidth)) || !Number.isFinite(Number(receiptHeight))) {
+      return res.status(400).json({ error: 'Invalid receipt image' });
+    }
+    const pdfWidth = 226.77;
+    const pdfHeight = pdfWidth * Number(receiptHeight) / Number(receiptWidth);
+    const doc = new PDFDocument({ size: [pdfWidth, pdfHeight], margin: 0 });
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
     doc.on('end', () => {
       const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.pdf`;
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` }).send(Buffer.concat(chunks));
     });
-    const innerWidth = receiptWidth - 36;
-    const imageData = logoData(settings);
-    if (imageData) doc.image(Buffer.from(imageData.split(',')[1], 'base64'), { fit: [180, 78], align: 'center' });
-    pdfFont(doc, 'LAXMI NARAYAN', true);
-    doc.fontSize(12).text('LAXMI NARAYAN', { align: 'center' });
-    doc.text('NAMKEEN', { align: 'center' });
-    pdfFont(doc, 'ESTIMATE');
-    doc.fontSize(9).text('ESTIMATE', { align: 'center' }).moveDown(0.5);
-    doc.fontSize(8).text(`${type === 'wholesale' ? 'WHOLESALE' : 'RETAIL'}  ${bill.invoice_number || ''}`, { align: 'center' });
-    doc.text(`${bill.date || ''} | ${bill.time || ''}`, { align: 'center' }).moveDown(0.8);
-    rows.forEach(row => {
-      pdfFont(doc, row.name);
-      const rowTop = doc.y;
-      doc.fontSize(8).text(`${row.name}\n${row.quantity} ${row.unit}`, 18, rowTop, { width: innerWidth * 0.48 });
-      doc.text(`₹ ${row.rate.toFixed(2)}`, 18 + innerWidth * 0.48, rowTop, { width: innerWidth * 0.24, align: 'right' });
-      doc.text(`₹ ${row.amount.toFixed(2)}`, 18 + innerWidth * 0.72, rowTop, { width: innerWidth * 0.28, align: 'right' });
-      doc.y = rowTop + 28;
-    });
-    doc.moveDown(0.4).fontSize(11).text(`TOTAL: ₹ ${Number(bill.total).toFixed(2)}`, { align: 'right' });
-    if (bill.customer_name) doc.fontSize(8).text(`Customer: ${safeText(bill.customer_name)}`);
-    if (bill.customer_phone) doc.text(`Phone: ${safeText(bill.customer_phone)}`);
-    if (details.description) doc.text(`Description: ${safeText(details.description)}`);
-    if (details.note) doc.text(`Note: ${safeText(details.note)}`);
+    doc.image(Buffer.from(receiptImage.slice('data:image/png;base64,'.length), 'base64'), 0, 0, { width: pdfWidth, height: pdfHeight });
     doc.end();
   } catch (err) { console.error('PDF export failed:', err); res.status(500).json({ error: 'Failed to create PDF' }); }
 });
 
 app.post('/api/exports/png', async (req, res) => {
   try {
-    const { bill, type } = req.body;
-    const settings = await getExportSettings();
-    const rows = exportRows(bill, settings);
-    const details = exportDetails(bill);
-    const scale = 3;
-    const width = 302;
-    const rowHeight = 28;
-    const height = Math.max(420, 340 + rows.length * rowHeight + (details.description ? 24 : 0) + (details.note ? 24 : 0));
-    const image = logoData(settings);
-    let y = 28;
-    const text = (value, className, x, textY, size, anchor = 'start') => `<text class="${className}" x="${x}" y="${textY}" font-size="${size}" text-anchor="${anchor}">${xmlText(value)}</text>`;
-    let content = `<rect width="100%" height="100%" fill="white"/>`;
-    if (image) { content += `<image href="${image}" x="${(width - 180) / 2}" y="${y}" width="180" height="78" preserveAspectRatio="xMidYMid meet"/>`; y += 88; }
-    content += text('LAXMI NARAYAN', 'brand', width / 2, y, 16, 'middle') + text('NAMKEEN', 'brand', width / 2, y + 20, 16, 'middle'); y += 45;
-    content += text('ESTIMATE', 'body center', width / 2, y, 13, 'middle'); y += 24;
-    content += text(`${type === 'wholesale' ? 'WHOLESALE' : 'RETAIL'}  ${bill.invoice_number || ''}`, 'body center', width / 2, y, 10, 'middle'); y += 16;
-    content += text(`${bill.date || ''} | ${bill.time || ''}`, 'body center', width / 2, y, 10, 'middle'); y += 24;
-    rows.forEach(row => { content += text(row.name, containsDevanagari(row.name) ? 'dev body' : 'body', 18, y, 10); content += text(`${row.quantity} ${row.unit}`, containsDevanagari(row.name) ? 'dev body' : 'body', 18, y + 13, 9); content += text(`₹ ${row.rate.toFixed(2)}`, 'body', 220, y, 10, 'end'); content += text(`₹ ${row.amount.toFixed(2)}`, 'body', width - 18, y, 10, 'end'); y += rowHeight; });
-    content += text(`TOTAL: ₹ ${Number(bill.total).toFixed(2)}`, 'body bold', width - 18, y + 4, 14, 'end'); y += 32;
-    if (bill.customer_name) { content += text(`Customer: ${bill.customer_name}`, 'body', 18, y, 10); y += 18; }
-    if (bill.customer_phone) { content += text(`Phone: ${bill.customer_phone}`, 'body', 18, y, 10); y += 18; }
-    if (details.description) { content += text(`Description: ${details.description}`, 'body', 18, y, 10); y += 18; }
-    if (details.note) { content += text(`Note: ${details.note}`, 'body', 18, y, 10); y += 18; }
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${Math.max(height, y + 32)}"><style>.brand{font-family:'Bodoni MT','Baskerville Old Face',Georgia,serif;fill:#111}.body{font-family:'Courier New','Nirmala UI',sans-serif;fill:#111}.dev{font-family:'Nirmala UI','Nirmala',sans-serif}.bold{font-weight:700}.center{text-anchor:middle}</style>${content}</svg>`;
-    const png = await sharp(Buffer.from(svg)).resize({ width: width * scale, height: Math.max(height, y + 32) * scale }).png().toBuffer();
+    const { receiptImage } = req.body;
+    if (typeof receiptImage !== 'string' || !receiptImage.startsWith('data:image/png;base64,')) return res.status(400).json({ error: 'Invalid receipt image' });
+    const png = Buffer.from(receiptImage.slice('data:image/png;base64,'.length), 'base64');
     const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.png`;
     res.set({ 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="${filename}"` }).send(png);
   } catch (err) { console.error('PNG export failed:', err); res.status(500).json({ error: 'Failed to create PNG' }); }
