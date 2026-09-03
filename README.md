@@ -39,7 +39,7 @@ See [RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md) for complete step-by-step gui
 createdb lakshmi_narayan
 
 # Set environment
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/lakshmi_narayan"
+export DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE"
 
 # Start
 npm run dev
@@ -49,8 +49,8 @@ npm run dev
 ```
 PORT=3000
 NODE_ENV=development
-DB_USER=postgres
-DB_PASSWORD=postgres
+DB_USER=YOUR_DB_USER
+DB_PASSWORD=YOUR_DB_PASSWORD
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=lakshmi_narayan

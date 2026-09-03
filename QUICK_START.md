@@ -17,9 +17,9 @@ You should see:
 ```
 ✨ Lakshmi Narayan Billing System
 🚀 Server running at http://localhost:3000
-📊 Database: D:\Business\billing.db
+📊 Database: PostgreSQL
 
-Connected to SQLite database
+Connected to PostgreSQL database
 Database tables created successfully
 ```
 
@@ -130,11 +130,7 @@ taskkill /PID <PID> /F
 ```
 
 ### Issue: Database error
-**Solution**: Delete old database and let it recreate
-```bash
-del billing.db
-npm start
-```
+**Solution**: Check the PostgreSQL connection settings in `.env` and verify that the database is reachable.
 
 ### Issue: Items not showing in dropdown
 **Solution**: Make sure items are added to the correct tab (Retail vs Wholesale)
@@ -149,8 +145,8 @@ npm start
 
 ## File Locations
 
-- **Application**: `d:\Business\index.html` (open in browser)
-- **Database**: `d:\Business\billing.db` (auto-created)
+- **Application**: `d:\Business\public\index.html` (served by the backend)
+- **Database**: PostgreSQL configured with environment variables
 - **Backend**: `d:\Business\server.js`
 - **Config**: `d:\Business\package.json`
 
@@ -181,7 +177,7 @@ The system is optimized for:
 
 **Technology Stack**:
 - Backend: Node.js + Express
-- Database: SQLite3
+- Database: PostgreSQL
 - Frontend: Vanilla HTML/CSS/JavaScript
 - No external frameworks or dependencies
 
@@ -215,11 +211,7 @@ The system is optimized for:
 ```
 
 ### Database Management
-```bash
-# Database location: d:\Business\billing.db
-# Uses SQLite3 format
-# Viewable with: DB Browser for SQLite
-```
+Set `DATABASE_URL` for deployment, or set the `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, and `DB_NAME` variables for local PostgreSQL.
 
 ---
 
@@ -250,9 +242,6 @@ npm start
 
 # Install dependencies
 npm install
-
-# View database
-# (Use DB Browser for SQLite tool)
 
 # Stop server
 # Press Ctrl+C in terminal

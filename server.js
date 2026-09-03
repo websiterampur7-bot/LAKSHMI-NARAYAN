@@ -28,10 +28,10 @@ if (DATABASE_URL) {
     ssl: NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   });
 } else {
-  // Development: Use local PostgreSQL or fallback values
+  // Development: use PostgreSQL settings supplied by the environment
   pool = new Pool({
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     database: process.env.DB_NAME || 'lakshmi_narayan',
@@ -54,7 +54,7 @@ app.get('/health', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
     res.json({
-      status: 'healthy',
+      status: 'ok',
       timestamp: result.rows[0].now,
       environment: NODE_ENV,
     });
@@ -184,12 +184,19 @@ function isValidItemPayload({ name, unit, mrp } = {}) {
 }
 
 function isValidBillPayload({ items, total } = {}) {
+  const parsedTotal = parseMoney(total);
+  const itemTotal = Array.isArray(items) ? items.reduce((sum, item) => sum + Number(item?.amount), 0) : NaN;
   return Array.isArray(items) && items.length > 0 &&
-    parseMoney(total) !== null &&
-    items.every(item => item && typeof item.name === 'string' &&
+    parsedTotal !== null && Number.isFinite(itemTotal) && Math.abs(parsedTotal - itemTotal) < 0.01 &&
+    items.every(item => item && typeof item.name === 'string' && item.name.trim() !== '' &&
       Number.isFinite(Number(item.quantity)) && Number(item.quantity) > 0 &&
       Number.isFinite(Number(item.rate)) && Number(item.rate) >= 0 &&
       Number.isFinite(Number(item.amount)) && Number(item.amount) >= 0);
+}
+
+function parseId(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 
@@ -199,7 +206,8 @@ function isValidBillPayload({ items, total } = {}) {
 // Get all retail items
 app.get('/api/retail-items', async (req, res) => {
   try {
-    const result = await queryAsync('SELECT id, name, unit, purchase_rate, mrp, selling_price, created_at FROM retail_items ORDER BY name');
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const result = await queryAsync('SELECT id, name, unit, purchase_rate, mrp, selling_price, created_at FROM retail_items WHERE name ILIKE $1 ORDER BY name', [`%${search}%`]);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching retail items:', err);
@@ -210,7 +218,8 @@ app.get('/api/retail-items', async (req, res) => {
 // Get all wholesale items
 app.get('/api/wholesale-items', async (req, res) => {
   try {
-    const result = await queryAsync('SELECT id, name, unit, purchase_rate, mrp, selling_price, created_at FROM wholesale_items ORDER BY name');
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const result = await queryAsync('SELECT id, name, unit, purchase_rate, mrp, selling_price, created_at FROM wholesale_items WHERE name ILIKE $1 ORDER BY name', [`%${search}%`]);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching wholesale items:', err);
@@ -304,6 +313,9 @@ app.put('/api/retail-items/:id', async (req, res) => {
     if (!isValidItemPayload(req.body)) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+    if (parseId(id) === null) {
+      return res.status(400).json({ error: 'Invalid item id' });
+    }
 
     const result = await queryAsync(
       'UPDATE retail_items SET name = $1, unit = $2, purchase_rate = $3, mrp = $4, selling_price = $5 WHERE id = $6 RETURNING id, name, unit, purchase_rate, mrp, selling_price',
@@ -334,6 +346,9 @@ app.put('/api/wholesale-items/:id', async (req, res) => {
     if (!isValidItemPayload(req.body)) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+    if (parseId(id) === null) {
+      return res.status(400).json({ error: 'Invalid item id' });
+    }
 
     const result = await queryAsync(
       'UPDATE wholesale_items SET name = $1, unit = $2, purchase_rate = $3, mrp = $4, selling_price = $5 WHERE id = $6 RETURNING id, name, unit, purchase_rate, mrp, selling_price',
@@ -358,8 +373,10 @@ app.put('/api/wholesale-items/:id', async (req, res) => {
 // Delete retail item
 app.delete('/api/retail-items/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    await queryAsync('DELETE FROM retail_items WHERE id = $1', [id]);
+    const id = parseId(req.params.id);
+    if (id === null) return res.status(400).json({ error: 'Invalid item id' });
+    const result = await queryAsync('DELETE FROM retail_items WHERE id = $1', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Item not found' });
     res.json({ success: true });
   } catch (err) {
     console.error('Error deleting retail item:', err);
@@ -370,8 +387,10 @@ app.delete('/api/retail-items/:id', async (req, res) => {
 // Delete wholesale item
 app.delete('/api/wholesale-items/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    await queryAsync('DELETE FROM wholesale_items WHERE id = $1', [id]);
+    const id = parseId(req.params.id);
+    if (id === null) return res.status(400).json({ error: 'Invalid item id' });
+    const result = await queryAsync('DELETE FROM wholesale_items WHERE id = $1', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Item not found' });
     res.json({ success: true });
   } catch (err) {
     console.error('Error deleting wholesale item:', err);

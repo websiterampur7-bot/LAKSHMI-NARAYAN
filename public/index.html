@@ -672,6 +672,15 @@
     .bill-item-name {
       font-weight: 600;
       color: var(--text-primary);
+      min-width: 0;
+    }
+
+    .bill-item-meta {
+      display: block;
+      margin-top: 2px;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      font-weight: 400;
     }
 
     .bill-item-value {
@@ -681,12 +690,18 @@
 
     @media (max-width: 768px) {
       .bill-item {
-        grid-template-columns: 1.5fr 1fr 1fr 45px;
+        grid-template-columns: minmax(0, 1fr) auto auto 44px;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-md) var(--spacing-sm);
         font-size: 0.9rem;
       }
 
-      .bill-item > :nth-child(2) {
-        display: none;
+      .bill-item-name {
+        grid-column: 1 / -1;
+      }
+
+      .bill-item-value {
+        white-space: nowrap;
       }
     }
 
@@ -1213,7 +1228,7 @@
         <div class="billing-right">
           <h3>Current Bill</h3>
 
-          <div id="retailBillItems" class="bill-items">
+          <div id="retailBillItems" class="bill-items" aria-live="polite">
             <div class="empty-state" style="padding: var(--spacing-lg) var(--spacing-md);">
               <p>No items added yet</p>
             </div>
@@ -1282,7 +1297,7 @@
         <div class="billing-right">
           <h3>Current Bill</h3>
 
-          <div id="wholesaleBillItems" class="bill-items">
+          <div id="wholesaleBillItems" class="bill-items" aria-live="polite">
             <div class="empty-state" style="padding: var(--spacing-lg) var(--spacing-md);">
               <p>No items added yet</p>
             </div>
@@ -1705,93 +1720,6 @@
       }
     }
 
-    function renderRetailItemSelect() {
-      const select = document.getElementById('retailItemSelect');
-      select.innerHTML = '<option value="">Choose an item...</option>';
-
-      state.retailItems.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = item.name;
-        option.dataset.unit = item.unit;
-        option.dataset.price = item.selling_price;
-        select.appendChild(option);
-      });
-    }
-
-    function selectRetailItem() {
-      const select = document.getElementById('retailItemSelect');
-      const option = select.options[select.selectedIndex];
-
-      if (option.value) {
-        document.getElementById('retailUnit').value = option.dataset.unit;
-        document.getElementById('retailPrice').value = parseFloat(option.dataset.price).toFixed(2);
-        document.getElementById('retailQuantity').focus();
-      } else {
-        document.getElementById('retailUnit').value = '';
-        document.getElementById('retailPrice').value = '';
-      }
-    }
-
-    function addRetailItem() {
-      const select = document.getElementById('retailItemSelect');
-      const quantity = parseFloat(document.getElementById('retailQuantity').value);
-
-      if (!select.value) {
-        showNotification('Please select an item', 'error');
-        return;
-      }
-
-      if (isNaN(quantity) || quantity <= 0) {
-        showNotification('Please enter a valid quantity', 'error');
-        return;
-      }
-
-      const item = state.retailItems.find(i => i.id == select.value);
-      const amount = quantity * parseFloat(item.selling_price);
-
-      state.retailBillItems.push({
-        id: Date.now(),
-        itemId: item.id,
-        name: item.name,
-        unit: item.unit,
-        quantity: quantity,
-        rate: parseFloat(item.selling_price),
-        amount: amount,
-      });
-
-      renderRetailBill();
-      document.getElementById('retailQuantity').value = '';
-      document.getElementById('retailItemSelect').value = '';
-      document.getElementById('retailUnit').value = '';
-      document.getElementById('retailPrice').value = '';
-      select.focus();
-    }
-
-    function renderRetailBill() {
-      const container = document.getElementById('retailBillItems');
-
-      if (state.retailBillItems.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state" style="padding: var(--spacing-lg) var(--spacing-md);">
-            <p>No items added yet</p>
-          </div>
-        `;
-      } else {
-        container.innerHTML = state.retailBillItems.map(item => `
-          <div class="bill-item">
-            <div class="bill-item-name">${item.name}</div>
-            <div class="bill-item-value">${item.quantity} ${item.unit}</div>
-            <div class="bill-item-value">₹ ${item.rate.toFixed(2)}</div>
-            <div class="bill-item-value">₹ ${item.amount.toFixed(2)}</div>
-            <button class="btn-danger btn-sm btn-icon" onclick="removeRetailItem(${item.id})">×</button>
-          </div>
-        `).join('');
-      }
-
-      updateRetailTotal();
-    }
-
     function removeRetailItem(id) {
       state.retailBillItems = state.retailBillItems.filter(item => item.id !== id);
       renderRetailBill();
@@ -1818,7 +1746,7 @@
           total: total,
         });
 
-        generateAndPrintReceipt('retail', bill);
+        renderEstimate('retail', bill);
       } catch (err) {
         showNotification('Error generating bill', 'error');
       }
@@ -1839,77 +1767,16 @@
       }
     }
 
-    function renderWholesaleItemSelect() {
-      const select = document.getElementById('wholesaleItemSelect');
-      select.innerHTML = '<option value="">Choose an item...</option>';
-
-      state.wholesaleItems.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = item.name;
-        option.dataset.unit = item.unit;
-        option.dataset.price = item.selling_price;
-        select.appendChild(option);
-      });
+    function renderRetailBill() {
+      retailBillItems.innerHTML = state.retailBillItems.length ? state.retailBillItems.map(item => `
+        <div class="bill-item" data-bill-item-id="${item.id}">
+          <div class="bill-item-name">${item.name}<small class="bill-item-meta">Quantity: ${item.quantity} | Packaging: ${item.packaging || 'Packet'}</small></div>
+          <div class="bill-item-value">Rate: ₹ ${Number(item.rate).toFixed(2)}</div>
+          <div class="bill-item-value">Amount: ₹ ${Number(item.amount).toFixed(2)}</div>
+          <button class="btn-danger btn-sm btn-icon" aria-label="Remove ${item.name}" onclick="removeRetailItem('${item.id}')">×</button>
+        </div>`).join('') : '<div class="empty-state"><p>No items added yet</p></div>';
+      updateRetailTotal();
     }
-    function renderAdminItems() {
-      const render = (items, containerId, searchId, type) => { const query = document.getElementById(searchId).value.toLowerCase(); const visible = items.filter(item => item.name.toLowerCase().includes(query)); document.getElementById(containerId).innerHTML = visible.length ? `<div class="table-container"><table><thead><tr><th>Item Name</th><th>Unit</th><th>MRP</th><th>Actions</th></tr></thead><tbody>${visible.map(item => `<tr><td><strong>${item.name}</strong></td><td>${item.unit}</td><td>₹ ${Number(item.mrp).toFixed(2)}</td><td><button class="btn-secondary btn-sm" onclick="editItem('${type}', ${item.id})">Edit</button> <button class="btn-danger btn-sm" onclick="deleteItem('${type}', ${item.id})">Delete</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty-state"><p>No matching items</p></div>'; };
-      render(state.retailItems, 'retailItemsContainer', 'retailSearch', 'retail'); render(state.wholesaleItems, 'wholesaleItemsContainer', 'wholesaleSearch', 'wholesale');
-    }
-    function editItem(type, id) { const item = (type === 'retail' ? state.retailItems : state.wholesaleItems).find(entry => entry.id === id); if (!item) return; state.editingItemType = type; state.editingItemId = id; itemModalTitle.textContent = `Edit ${type === 'retail' ? 'Retail' : 'Wholesale'} Item`; itemName.value = item.name; itemUnit.value = item.unit; mrp.value = item.mrp; itemFormMessage.innerHTML = ''; itemModal.classList.add('active'); }
-    function openAddItemModal(type) { state.editingItemType = type; state.editingItemId = null; itemModalTitle.textContent = `Add ${type === 'retail' ? 'Retail' : 'Wholesale'} Item`; itemName.value = ''; itemUnit.value = ''; mrp.value = ''; itemFormMessage.innerHTML = ''; itemModal.classList.add('active'); }
-    function renderRetailBill() { retailBillItems.innerHTML = state.retailBillItems.length ? state.retailBillItems.map(item => `<div class="bill-item"><div class="bill-item-name">${item.name}<small>${item.quantity} ${item.unit}<br>${item.quantity} Packet</small></div><div class="bill-item-value">₹ ${Number(item.rate).toFixed(2)}</div><div class="bill-item-value">₹ ${Number(item.amount).toFixed(2)}</div><button class="btn-danger btn-sm btn-icon" onclick="removeRetailItem('${item.id}')">×</button></div>`).join('') : '<div class="empty-state"><p>No items added yet</p></div>'; updateRetailTotal(); }
-    function renderWholesaleBill() { wholesaleBillItems.innerHTML = state.wholesaleBillItems.length ? state.wholesaleBillItems.map(item => `<div class="bill-item"><div class="bill-item-name">${item.name}<small>${item.quantity} ${item.unit}<br>${item.quantity} Bag</small></div><div class="bill-item-value">₹ ${Number(item.rate).toFixed(2)}</div><div class="bill-item-value">₹ ${Number(item.amount).toFixed(2)}</div><button class="btn-danger btn-sm btn-icon" onclick="removeWholesaleItem('${item.id}')">×</button></div>`).join('') : '<div class="empty-state"><p>No items added yet</p></div>'; updateWholesaleTotal(); }
-
-    function selectWholesaleItem() {
-      const select = document.getElementById('wholesaleItemSelect');
-      const option = select.options[select.selectedIndex];
-
-      if (option.value) {
-        document.getElementById('wholesaleUnit').value = option.dataset.unit;
-        document.getElementById('wholesalePrice').value = parseFloat(option.dataset.price).toFixed(2);
-        document.getElementById('wholesaleQuantity').focus();
-      } else {
-        document.getElementById('wholesaleUnit').value = '';
-        document.getElementById('wholesalePrice').value = '';
-      }
-    }
-
-    function addWholesaleItem() {
-      const select = document.getElementById('wholesaleItemSelect');
-      const quantity = parseFloat(document.getElementById('wholesaleQuantity').value);
-
-      if (!select.value) {
-        showNotification('Please select an item', 'error');
-        return;
-      }
-
-      if (isNaN(quantity) || quantity <= 0) {
-        showNotification('Please enter a valid quantity', 'error');
-        return;
-      }
-
-      const item = state.wholesaleItems.find(i => i.id == select.value);
-      const amount = quantity * parseFloat(item.selling_price);
-
-      state.wholesaleBillItems.push({
-        id: Date.now(),
-        itemId: item.id,
-        name: item.name,
-        unit: item.unit,
-        quantity: quantity,
-        rate: parseFloat(item.selling_price),
-        amount: amount,
-      });
-
-      renderWholesaleBill();
-      document.getElementById('wholesaleQuantity').value = '';
-      document.getElementById('wholesaleItemSelect').value = '';
-      document.getElementById('wholesaleUnit').value = '';
-      document.getElementById('wholesalePrice').value = '';
-      select.focus();
-    }
-
     function renderWholesaleBill() {
       const container = document.getElementById('wholesaleBillItems');
 
@@ -1921,12 +1788,11 @@
         `;
       } else {
         container.innerHTML = state.wholesaleBillItems.map(item => `
-          <div class="bill-item">
-            <div class="bill-item-name">${item.name}</div>
-            <div class="bill-item-value">${item.quantity} ${item.unit}</div>
-            <div class="bill-item-value">₹ ${item.rate.toFixed(2)}</div>
-            <div class="bill-item-value">₹ ${item.amount.toFixed(2)}</div>
-            <button class="btn-danger btn-sm btn-icon" onclick="removeWholesaleItem(${item.id})">×</button>
+          <div class="bill-item" data-bill-item-id="${item.id}">
+            <div class="bill-item-name">${item.name}<small class="bill-item-meta">Quantity: ${item.quantity} | Packaging: ${item.packaging || 'Bag'}</small></div>
+            <div class="bill-item-value">Rate: ₹ ${Number(item.rate).toFixed(2)}</div>
+            <div class="bill-item-value">Amount: ₹ ${Number(item.amount).toFixed(2)}</div>
+            <button class="btn-danger btn-sm btn-icon" aria-label="Remove ${item.name}" onclick="removeWholesaleItem('${item.id}')">×</button>
           </div>
         `).join('');
       }
@@ -1960,7 +1826,7 @@
           total: total,
         });
 
-        generateAndPrintReceipt('wholesale', bill);
+        renderEstimate('wholesale', bill);
       } catch (err) {
         showNotification('Error generating bill', 'error');
       }
@@ -1969,63 +1835,6 @@
     function clearWholesaleBill() {
       state.wholesaleBillItems = [];
       renderWholesaleBill();
-    }
-
-    // ==================== RECEIPT GENERATION ====================
-    function generateAndPrintReceipt(type, bill) {
-      const container = document.getElementById('receiptContainer');
-      const items = bill.items || [];
-      const billType = type === 'retail' ? 'RB' : 'WB';
-
-      const time = bill.time;
-
-      const receiptHTML = `
-        <div class="receipt-container">
-          <div class="receipt-header">
-            <div class="receipt-business-name">LAXMI NARAYAN</div>
-            <div style="font-size: 0.85rem; color: var(--text-secondary);">${type === 'retail' ? 'RETAIL' : 'WHOLESALE'} BILL</div>
-          </div>
-
-          <div class="receipt-estimate-info">
-            <div><strong>Estimate #${bill.invoice_number}</strong></div>
-            <div>${bill.date} | ${time}</div>
-          </div>
-
-          <div style="border-bottom: 1px solid var(--text-primary); margin-bottom: var(--spacing-md);"></div>
-
-          <div class="receipt-items">
-            ${items.map(item => `
-              <div class="receipt-item">
-                <div style="text-align: left;">${item.name}</div>
-                <div>${item.quantity} ${item.unit}</div>
-                <div style="text-align: right;">₹ ${item.amount.toFixed(2)}</div>
-              </div>
-            `).join('')}
-          </div>
-
-          <div style="border-bottom: 1px solid var(--text-primary); margin-bottom: var(--spacing-md);"></div>
-
-          <div class="receipt-total">
-            TOTAL: ₹ ${Number(bill.total).toFixed(2)}
-          </div>
-
-        </div>
-      `;
-
-      container.innerHTML = receiptHTML;
-      navigateTo('receipt');
-
-      setTimeout(() => {
-        window.print();
-        setTimeout(() => {
-          goToDashboard();
-          if (type === 'retail') {
-            clearRetailBill();
-          } else {
-            clearWholesaleBill();
-          }
-        }, 500);
-      }, 200);
     }
 
     // ==================== NOTIFICATIONS ====================
@@ -2106,12 +1915,20 @@
     function addRetailItem() {
       const item = state.retailItems.find(entry => entry.id == retailItemSelect.value); const quantity = Number(retailQuantity.value);
       if (!item || !Number.isFinite(quantity) || quantity <= 0) return showNotification('Select an item and enter a valid quantity', 'error');
-      state.retailBillItems.push({ id: `${Date.now()}-${Math.random()}`, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Packet', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) }); renderRetailBill(); retailQuantity.value = ''; retailItemSelect.value = ''; selectRetailItem();
+      const billItemId = `${Date.now()}-${Math.random()}`;
+      state.retailBillItems.push({ id: billItemId, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Packet', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) });
+      renderRetailBill();
+      retailQuantity.value = ''; retailItemSelect.value = ''; selectRetailItem();
+      document.querySelector(`[data-bill-item-id="${billItemId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     function addWholesaleItem() {
       const item = state.wholesaleItems.find(entry => entry.id == wholesaleItemSelect.value); const quantity = Number(wholesaleQuantity.value);
       if (!item || !Number.isFinite(quantity) || quantity <= 0) return showNotification('Select an item and enter a valid quantity', 'error');
-      state.wholesaleBillItems.push({ id: `${Date.now()}-${Math.random()}`, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Bag', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) }); renderWholesaleBill(); wholesaleQuantity.value = ''; wholesaleItemSelect.value = ''; selectWholesaleItem();
+      const billItemId = `${Date.now()}-${Math.random()}`;
+      state.wholesaleBillItems.push({ id: billItemId, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Bag', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) });
+      renderWholesaleBill();
+      wholesaleQuantity.value = ''; wholesaleItemSelect.value = ''; selectWholesaleItem();
+      document.querySelector(`[data-bill-item-id="${billItemId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function renderEstimate(type, bill) {
