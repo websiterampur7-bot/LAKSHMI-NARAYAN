@@ -880,52 +880,103 @@
       width: 80mm;
       max-width: 100%;
       margin: 0 auto;
-      padding: var(--spacing-lg);
-      background: var(--bg-secondary);
+      padding: 18px 12px;
+      background: #ffffff;
+      color: #111111;
       font-family: 'Courier New', monospace;
-      font-size: 0.9rem;
+      font-size: 0.78rem;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
     }
 
     .receipt-header {
       text-align: center;
-      margin-bottom: var(--spacing-lg);
-      border-bottom: 1px solid var(--text-primary);
-      padding-bottom: var(--spacing-md);
+      margin-bottom: 12px;
+      border-bottom: 1px solid #111111;
+      padding-bottom: 10px;
     }
 
     .receipt-business-name {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      margin-bottom: var(--spacing-sm);
+      font-family: 'Bodoni MT', 'Baskerville Old Face', 'Book Antiqua', Georgia, serif;
+      font-size: 1.2rem;
+      font-weight: 400;
+      letter-spacing: 0.03em;
+      line-height: 1.05;
+      margin-bottom: 5px;
     }
 
     .receipt-estimate-info {
-      font-size: 0.85rem;
+      font-size: 0.74rem;
       text-align: center;
-      margin-bottom: var(--spacing-md);
+      margin-bottom: 10px;
+      line-height: 1.45;
     }
 
     .receipt-items {
-      margin-bottom: var(--spacing-lg);
+      margin-bottom: 10px;
     }
 
     .receipt-item {
       display: grid;
-      grid-template-columns: 1.5fr 0.8fr 1fr;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-xs) 0;
-      font-size: 0.85rem;
-      border-bottom: 1px dotted var(--border-color);
+      grid-template-columns: minmax(0, 1.35fr) minmax(50px, 0.85fr) minmax(48px, 0.8fr) minmax(60px, 1fr);
+      gap: 5px;
+      align-items: start;
+      padding: 5px 0;
+      font-size: 0.72rem;
+      border-bottom: 1px dotted #999999;
+    }
+
+    .receipt-table-head {
+      font-weight: 700;
+      font-size: 0.65rem;
+      border-bottom: 1px solid #111111;
+      padding-bottom: 5px;
+    }
+
+    .receipt-table-head > div {
+      white-space: nowrap;
+    }
+
+    .receipt-item > :nth-child(n + 2),
+    .receipt-table-head > :nth-child(n + 2) {
+      text-align: right;
+    }
+
+    .receipt-item-name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .receipt-item small {
+      display: inline;
+      margin-left: 3px;
+      font-size: inherit;
+      color: inherit;
     }
 
     .receipt-total {
       text-align: right;
-      font-size: 1.2rem;
+      font-size: 1rem;
       font-weight: 700;
-      padding: var(--spacing-md) 0;
-      border-top: 2px solid var(--text-primary);
-      border-bottom: 2px solid var(--text-primary);
+      padding: 9px 0;
+      border-top: 1px solid #111111;
+      border-bottom: 1px solid #111111;
+    }
+
+    .receipt-summary {
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 0;
+      font-size: 0.74rem;
+      border-top: 1px solid #111111;
+      border-bottom: 1px solid #111111;
+    }
+
+    .receipt-customer,
+    .receipt-notes {
+      margin-top: 8px;
+      font-size: 0.74rem;
+      line-height: 1.35;
     }
 
     .receipt-footer {
@@ -1991,8 +2042,11 @@
     }
 
     function renderEstimate(type, bill) {
-      const rows = (bill.items || []).map(item => `<div class="receipt-item"><div>${item.name}<small>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</small></div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
-      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-brand-heading"><span>LAXMI NARAYAN</span><span>NAMKEEN</span></div><strong>ESTIMATE</strong></div><div class="receipt-estimate-info">${bill.invoice_number || ''}<br>${bill.date || ''} | ${bill.time || ''}</div><div class="receipt-items">${rows}</div><div class="receipt-total">TOTAL: ₹ ${Number(bill.total).toFixed(2)}</div>${bill.customer_name ? `<p>Customer: ${bill.customer_name}</p>` : ''}${bill.customer_phone ? `<p>Phone: ${bill.customer_phone}</p>` : ''}${bill.description ? `<p>Description: ${bill.description}</p>` : ''}${bill.note ? `<p>Note: ${bill.note}</p>` : ''}</div>`;
+      const items = bill.items || [];
+      const rows = items.map(item => `<div class="receipt-item"><div class="receipt-item-name">${item.name}</div><div>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
+      const customer = [bill.customer_name && `Customer Name: ${bill.customer_name}`, bill.customer_phone && `Phone: ${bill.customer_phone}`].filter(Boolean).join('<br>');
+      const notes = [bill.description && `Description: ${bill.description}`, bill.note && `Note: ${bill.note}`].filter(Boolean).join('<br>');
+      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-business-name">LAXMI NARAYAN NAMKEEN BHANDAR</div><div>Nayagunj Rampur</div><div>Ph.No.: 9045032878</div></div><div class="receipt-estimate-info"><strong>ESTIMATE</strong><br>Estimate No: ${bill.invoice_number || ''}<br>Date: ${bill.date || ''}${bill.time ? ` | ${bill.time}` : ''}</div>${customer ? `<div class="receipt-customer">${customer}</div>` : ''}<div class="receipt-items"><div class="receipt-item receipt-table-head"><div>Item Name</div><div>Quantity</div><div>Price</div><div>Amount</div></div>${rows}</div><div class="receipt-summary"><span>Qty: ${items.reduce((sum, item) => sum + Number(item.quantity), 0)}</span><span>Items: ${items.length}</span></div><div class="receipt-total">Total: ₹ ${Number(bill.total).toFixed(2)}</div>${notes ? `<div class="receipt-notes">${notes}</div>` : ''}</div>`;
       state.lastEstimate = { type, bill };
       window.history.replaceState({ page: 'receipt' }, '', window.location.href);
       renderPage('receipt');
