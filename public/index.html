@@ -1086,7 +1086,7 @@
           </div>
 
           <div class="card action-card" onclick="navigateTo('adminPanel')">
-            <h2>Admin Panel</h2>
+            <h2>Office</h2>
             <p class="text-secondary">Manage products and inventory</p>
           </div>
           <div class="card action-card" onclick="navigateTo('settings')">
@@ -1199,7 +1199,7 @@
               </div>
             </div>
             <button class="btn-success btn-lg btn-block mt-md" onclick="addRetailItem()">+ Add Item</button>
-            <div class="customer-fields"><div><label for="retailCustomerName">Customer Name (optional)</label><input id="retailCustomerName"></div><div><label for="retailCustomerPhone">Customer Phone (optional)</label><input id="retailCustomerPhone" type="tel"></div><div><label for="retailNote">Description / Note (optional)</label><textarea id="retailNote" rows="2"></textarea></div></div>
+            <div class="customer-fields"><div><label for="retailCustomerName">Customer Name (optional)</label><input id="retailCustomerName"></div><div><label for="retailCustomerPhone">Customer Phone (optional)</label><input id="retailCustomerPhone" type="tel"></div><div><label for="retailDescription">Description (optional)</label><textarea id="retailDescription" rows="2"></textarea></div><div><label for="retailNote">Note (optional)</label><textarea id="retailNote" rows="2"></textarea></div></div>
           </div>
         </div>
       </div>
@@ -1268,7 +1268,7 @@
               </div>
             </div>
             <button class="btn-success btn-lg btn-block mt-md" onclick="addWholesaleItem()">+ Add Item</button>
-            <div class="customer-fields"><div><label for="wholesaleCustomerName">Customer Name (optional)</label><input id="wholesaleCustomerName"></div><div><label for="wholesaleCustomerPhone">Customer Phone (optional)</label><input id="wholesaleCustomerPhone" type="tel"></div><div><label for="wholesaleNote">Description / Note (optional)</label><textarea id="wholesaleNote" rows="2"></textarea></div></div>
+            <div class="customer-fields"><div><label for="wholesaleCustomerName">Customer Name (optional)</label><input id="wholesaleCustomerName"></div><div><label for="wholesaleCustomerPhone">Customer Phone (optional)</label><input id="wholesaleCustomerPhone" type="tel"></div><div><label for="wholesaleDescription">Description (optional)</label><textarea id="wholesaleDescription" rows="2"></textarea></div><div><label for="wholesaleNote">Note (optional)</label><textarea id="wholesaleNote" rows="2"></textarea></div></div>
           </div>
         </div>
       </div>
@@ -1455,8 +1455,10 @@
       if (page === 'adminPanel') {
         loadAdminItems();
       } else if (page === 'retailBilling') {
+        clearRetailBill();
         loadRetailItems();
       } else if (page === 'wholesaleBilling') {
+        clearWholesaleBill();
         loadWholesaleItems();
       }
     }
@@ -1687,7 +1689,6 @@
       try {
         state.retailItems = await api.getRetailItems();
         renderRetailItemSelect();
-        clearRetailBill();
       } catch (err) {
         showNotification('Error loading items', 'error');
       }
@@ -1822,7 +1823,6 @@
       try {
         state.wholesaleItems = await api.getWholesaleItems();
         renderWholesaleItemSelect();
-        clearWholesaleBill();
       } catch (err) {
         showNotification('Error loading items', 'error');
       }
@@ -2109,13 +2109,16 @@
 
     function renderEstimate(type, bill) {
       const rows = (bill.items || []).map(item => `<div class="receipt-item"><div>${item.name}<small>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</small></div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
-      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-brand-heading"><span>LAXMI NARAYAN</span><span>NAMKEEN</span></div><strong>ESTIMATE</strong></div><div class="receipt-estimate-info">${bill.invoice_number || ''}<br>${bill.date || ''} | ${bill.time || ''}</div><div class="receipt-items">${rows}</div><div class="receipt-total">TOTAL: ₹ ${Number(bill.total).toFixed(2)}</div>${bill.customer_name ? `<p>Customer: ${bill.customer_name}</p>` : ''}${bill.customer_phone ? `<p>Phone: ${bill.customer_phone}</p>` : ''}${bill.note ? `<p>Note: ${bill.note}</p>` : ''}<div class="receipt-footer">Thank you for your business</div></div>`;
+      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-brand-heading"><span>LAXMI NARAYAN</span><span>NAMKEEN</span></div><strong>ESTIMATE</strong></div><div class="receipt-estimate-info">${bill.invoice_number || ''}<br>${bill.date || ''} | ${bill.time || ''}</div><div class="receipt-items">${rows}</div><div class="receipt-total">TOTAL: ₹ ${Number(bill.total).toFixed(2)}</div>${bill.customer_name ? `<p>Customer: ${bill.customer_name}</p>` : ''}${bill.customer_phone ? `<p>Phone: ${bill.customer_phone}</p>` : ''}${bill.description ? `<p>Description: ${bill.description}</p>` : ''}${bill.note ? `<p>Note: ${bill.note}</p>` : ''}<div class="receipt-footer">Thank you for your business</div></div>`;
       state.lastEstimate = { type, bill }; navigateTo('receipt');
     }
     async function generateEstimate(type) {
       const items = type === 'retail' ? state.retailBillItems : state.wholesaleBillItems; const prefix = type === 'retail' ? 'retail' : 'wholesale';
       if (!items.length) return showNotification('Please add items to the estimate', 'error');
-      try { const bill = await api.request(`/api/${prefix}-bills`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, total: items.reduce((sum, item) => sum + item.amount, 0), customer_name: document.getElementById(`${prefix}CustomerName`).value.trim(), customer_phone: document.getElementById(`${prefix}CustomerPhone`).value.trim(), note: document.getElementById(`${prefix}Note`).value.trim() }) }); renderEstimate(type, bill); }
+      const description = document.getElementById(`${prefix}Description`).value.trim();
+      const note = document.getElementById(`${prefix}Note`).value.trim();
+      const storedNote = [description && `Description: ${description}`, note && `Note: ${note}`].filter(Boolean).join('\n');
+      try { const bill = await api.request(`/api/${prefix}-bills`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, total: items.reduce((sum, item) => sum + item.amount, 0), customer_name: document.getElementById(`${prefix}CustomerName`).value.trim(), customer_phone: document.getElementById(`${prefix}CustomerPhone`).value.trim(), note: storedNote }) }); bill.description = description; bill.note = note; renderEstimate(type, bill); state.lastEstimate.bill.note = storedNote; }
       catch (err) { showNotification(err.message || 'Could not generate estimate', 'error'); }
     }
     generateRetailBill = () => generateEstimate('retail');

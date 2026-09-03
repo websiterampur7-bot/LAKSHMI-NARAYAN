@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
+import * as fontkit from 'fontkit';
 
 const { Pool } = pg;
 
@@ -516,6 +517,35 @@ function exportRows(bill, settings) {
   }));
 }
 
+function xmlText(value) {
+  return String(value || '').replace(/[<>&"']/g, character => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[character]);
+}
+
+function exportDetails(bill) {
+  const storedNote = String(bill.note || '');
+  const description = String(bill.description || (storedNote.match(/^Description: (.*)$/m) || [])[1] || '');
+  const note = String(bill.note && storedNote.replace(/^Description: .*\n?/, '').replace(/^Note: /, '') || '');
+  return { description, note };
+}
+
+function containsDevanagari(value) {
+  return /[\u0900-\u097F]/.test(String(value || ''));
+}
+
+function pdfFont(doc, value, brand = false) {
+  const brandFontPath = 'C:\\Windows\\Fonts\\BOD_R.TTF';
+  const bodyFontPath = 'C:\\Windows\\Fonts\\cour.ttf';
+  const devanagariFontPath = 'C:\\Windows\\Fonts\\Nirmala.ttc';
+  if (brand && fs.existsSync(brandFontPath)) {
+    doc.font(brandFontPath);
+  } else if (!brand && containsDevanagari(value) && fs.existsSync(devanagariFontPath)) {
+    const devanagariFont = fontkit.openSync(devanagariFontPath).fonts.find(font => font.familyName === 'Nirmala UI' && font.subfamilyName === 'Regular');
+    if (devanagariFont) doc.font(devanagariFont);
+  } else if (fs.existsSync(bodyFontPath)) {
+    doc.font(bodyFontPath);
+  }
+}
+
 function logoData(settings) {
   if (settings.logo_data) return settings.logo_data;
   if (fs.existsSync(logoPath)) return `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`;
@@ -527,29 +557,41 @@ app.post('/api/exports/pdf', async (req, res) => {
     const { bill, type } = req.body;
     const settings = await getExportSettings();
     const rows = exportRows(bill, settings);
-    const doc = new PDFDocument({ size: [164, Math.max(320, 240 + rows.length * 58)], margin: 12 });
+    const details = exportDetails(bill);
+    const receiptWidth = 226.77;
+    const receiptHeight = Math.max(320, 260 + rows.length * 42 + (details.description ? 14 : 0) + (details.note ? 14 : 0));
+    const doc = new PDFDocument({ size: [receiptWidth, receiptHeight], margin: 18 });
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
     doc.on('end', () => {
       const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.pdf`;
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` }).send(Buffer.concat(chunks));
     });
-    const brandFontPath = 'C:\\Windows\\Fonts\\BOD_R.TTF';
-    const bodyFontPath = 'C:\\Windows\\Fonts\\arial.ttf';
-    if (fs.existsSync(brandFontPath)) doc.font(brandFontPath);
-    if (logoData(settings)) doc.image(Buffer.from(logoData(settings).split(',')[1], 'base64'), { fit: [120, 52], align: 'center' });
-    doc.fontSize(11).text('LAXMI NARAYAN', { align: 'center' });
+    const innerWidth = receiptWidth - 36;
+    const imageData = logoData(settings);
+    if (imageData) doc.image(Buffer.from(imageData.split(',')[1], 'base64'), { fit: [180, 78], align: 'center' });
+    pdfFont(doc, 'LAXMI NARAYAN', true);
+    doc.fontSize(12).text('LAXMI NARAYAN', { align: 'center' });
     doc.text('NAMKEEN', { align: 'center' });
-    if (fs.existsSync(bodyFontPath)) doc.font(bodyFontPath);
-    doc.fontSize(10).text('ESTIMATE', { align: 'center' }).moveDown(0.4);
+    pdfFont(doc, 'ESTIMATE');
+    doc.fontSize(9).text('ESTIMATE', { align: 'center' }).moveDown(0.5);
     doc.fontSize(8).text(`${type === 'wholesale' ? 'WHOLESALE' : 'RETAIL'}  ${bill.invoice_number || ''}`, { align: 'center' });
-    doc.text(`${bill.date || ''} ${bill.time || ''}`, { align: 'center' }).moveDown();
-    rows.forEach(row => doc.fontSize(8).text(`${row.name}\n${row.quantity} ${row.unit}   MRP ₹${row.rate.toFixed(2)}   ₹${row.amount.toFixed(2)}`));
-    doc.moveDown().fontSize(11).text(`TOTAL: ₹${Number(bill.total).toFixed(2)}`, { align: 'right' });
+    doc.text(`${bill.date || ''} | ${bill.time || ''}`, { align: 'center' }).moveDown(0.8);
+    rows.forEach(row => {
+      pdfFont(doc, row.name);
+      const rowTop = doc.y;
+      doc.fontSize(8).text(`${row.name}\n${row.quantity} ${row.unit}`, 18, rowTop, { width: innerWidth * 0.48 });
+      doc.text(`₹ ${row.rate.toFixed(2)}`, 18 + innerWidth * 0.48, rowTop, { width: innerWidth * 0.24, align: 'right' });
+      doc.text(`₹ ${row.amount.toFixed(2)}`, 18 + innerWidth * 0.72, rowTop, { width: innerWidth * 0.28, align: 'right' });
+      doc.y = rowTop + 28;
+    });
+    doc.moveDown(0.4).fontSize(11).text(`TOTAL: ₹ ${Number(bill.total).toFixed(2)}`, { align: 'right' });
     if (bill.customer_name) doc.fontSize(8).text(`Customer: ${safeText(bill.customer_name)}`);
     if (bill.customer_phone) doc.text(`Phone: ${safeText(bill.customer_phone)}`);
-    if (bill.note) doc.text(`Note: ${safeText(bill.note)}`);
-    if (settings.shop_phone || settings.shop_address || settings.instagram_username) doc.moveDown().fontSize(7).text([settings.shop_phone, settings.shop_address, settings.instagram_username && `Instagram: ${settings.instagram_username}`].filter(Boolean).join('\n'), { align: 'center' });
+    if (details.description) doc.text(`Description: ${safeText(details.description)}`);
+    if (details.note) doc.text(`Note: ${safeText(details.note)}`);
+    pdfFont(doc, 'Thank you for your business');
+    doc.moveDown(0.5).fontSize(8).text('Thank you for your business', { align: 'center' });
     doc.end();
   } catch (err) { console.error('PDF export failed:', err); res.status(500).json({ error: 'Failed to create PDF' }); }
 });
@@ -559,12 +601,29 @@ app.post('/api/exports/png', async (req, res) => {
     const { bill, type } = req.body;
     const settings = await getExportSettings();
     const rows = exportRows(bill, settings);
-    const lines = rows.map(row => `${row.name} | ${row.quantity} ${row.unit} | ₹${row.rate.toFixed(2)} | ₹${row.amount.toFixed(2)}`);
-    const text = ['LAXMI NARAYAN', 'NAMKEEN', 'ESTIMATE', `${type === 'wholesale' ? 'WHOLESALE' : 'RETAIL'}  ${bill.invoice_number || ''}`, ...lines, '', `TOTAL: ₹${Number(bill.total).toFixed(2)}`, bill.customer_name ? `Customer: ${safeText(bill.customer_name)}` : '', bill.customer_phone ? `Phone: ${safeText(bill.customer_phone)}` : '', bill.note ? `Note: ${safeText(bill.note)}` : ''].filter(Boolean);
+    const details = exportDetails(bill);
+    const scale = 3;
+    const width = 302;
+    const rowHeight = 28;
+    const height = Math.max(420, 340 + rows.length * rowHeight + (details.description ? 24 : 0) + (details.note ? 24 : 0));
     const image = logoData(settings);
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="${Math.max(300, 150 + text.length * 34)}"><rect width="100%" height="100%" fill="white"/><style>.brand{font-family:'Bodoni MT','Baskerville Old Face',Georgia,serif;fill:#111}.body{font-family:Arial,sans-serif;fill:#111}</style>${text.map((line, index) => `<text class="${index < 2 ? 'brand' : 'body'}" x="24" y="${100 + index * 34}" font-size="${index < 2 ? 24 : 18}">${safeText(line)}</text>`).join('')}</svg>`;
-    const baseImage = sharp(Buffer.from(svg));
-    const png = await (image ? baseImage.composite([{ input: await sharp(Buffer.from(image.split(',')[1], 'base64')).resize({ width: 160, height: 70, fit: 'inside' }).png().toBuffer(), left: 220, top: 12 }]) : baseImage).png().toBuffer();
+    let y = 28;
+    const text = (value, className, x, textY, size, anchor = 'start') => `<text class="${className}" x="${x}" y="${textY}" font-size="${size}" text-anchor="${anchor}">${xmlText(value)}</text>`;
+    let content = `<rect width="100%" height="100%" fill="white"/>`;
+    if (image) { content += `<image href="${image}" x="${(width - 180) / 2}" y="${y}" width="180" height="78" preserveAspectRatio="xMidYMid meet"/>`; y += 88; }
+    content += text('LAXMI NARAYAN', 'brand', width / 2, y, 16, 'middle') + text('NAMKEEN', 'brand', width / 2, y + 20, 16, 'middle'); y += 45;
+    content += text('ESTIMATE', 'body center', width / 2, y, 13, 'middle'); y += 24;
+    content += text(`${type === 'wholesale' ? 'WHOLESALE' : 'RETAIL'}  ${bill.invoice_number || ''}`, 'body center', width / 2, y, 10, 'middle'); y += 16;
+    content += text(`${bill.date || ''} | ${bill.time || ''}`, 'body center', width / 2, y, 10, 'middle'); y += 24;
+    rows.forEach(row => { content += text(row.name, containsDevanagari(row.name) ? 'dev body' : 'body', 18, y, 10); content += text(`${row.quantity} ${row.unit}`, containsDevanagari(row.name) ? 'dev body' : 'body', 18, y + 13, 9); content += text(`₹ ${row.rate.toFixed(2)}`, 'body', 220, y, 10, 'end'); content += text(`₹ ${row.amount.toFixed(2)}`, 'body', width - 18, y, 10, 'end'); y += rowHeight; });
+    content += text(`TOTAL: ₹ ${Number(bill.total).toFixed(2)}`, 'body bold', width - 18, y + 4, 14, 'end'); y += 32;
+    if (bill.customer_name) { content += text(`Customer: ${bill.customer_name}`, 'body', 18, y, 10); y += 18; }
+    if (bill.customer_phone) { content += text(`Phone: ${bill.customer_phone}`, 'body', 18, y, 10); y += 18; }
+    if (details.description) { content += text(`Description: ${details.description}`, 'body', 18, y, 10); y += 18; }
+    if (details.note) { content += text(`Note: ${details.note}`, 'body', 18, y, 10); y += 18; }
+    content += text('Thank you for your business', 'body center', width / 2, y + 12, 10, 'middle');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${Math.max(height, y + 32)}"><style>.brand{font-family:'Bodoni MT','Baskerville Old Face',Georgia,serif;fill:#111}.body{font-family:'Courier New','Nirmala UI',sans-serif;fill:#111}.dev{font-family:'Nirmala UI','Nirmala',sans-serif}.bold{font-weight:700}.center{text-anchor:middle}</style>${content}</svg>`;
+    const png = await sharp(Buffer.from(svg)).resize({ width: width * scale, height: Math.max(height, y + 32) * scale }).png().toBuffer();
     const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.png`;
     res.set({ 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="${filename}"` }).send(png);
   } catch (err) { console.error('PNG export failed:', err); res.status(500).json({ error: 'Failed to create PNG' }); }
