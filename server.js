@@ -553,9 +553,28 @@ app.post('/api/exports/pdf', async (req, res) => {
     if (typeof receiptImage !== 'string' || !receiptImage.startsWith('data:image/png;base64,') || !Number.isFinite(Number(receiptWidth)) || !Number.isFinite(Number(receiptHeight))) {
       return res.status(400).json({ error: 'Invalid receipt image' });
     }
-    const pdfWidths = { thermal58: 164.41, thermal80: 226.77, a6: 297.64, a5: 419.53, a4: 595.28, letter: 612, legal: 612 };
-    const pdfWidth = billSize === 'custom' && Number.isFinite(Number(billWidth)) ? Math.min(850.4, Math.max(113.4, Number(billWidth) * 2.83465)) : (pdfWidths[billSize] || 226.77);
-    const pdfHeight = billSize === 'custom' && Number.isFinite(Number(billHeight)) ? Math.min(1275.6, Math.max(113.4, Number(billHeight) * 2.83465)) : pdfWidth * Number(receiptHeight) / Number(receiptWidth);
+    // Convert mm to points (1mm = 72/25.4 points, or 2.83465 points per mm)
+    const pointsPerMM = 72 / 25.4;
+    // Calculate PDF dimensions based on actual receipt dimensions in mm
+    let pdfWidth, pdfHeight;
+    if (Number.isFinite(Number(billWidth))) {
+      pdfWidth = Number(billWidth) * pointsPerMM;
+      // If height is provided, use it; otherwise calculate from aspect ratio
+      if (Number.isFinite(Number(billHeight)) && Number(billHeight) > 0) {
+        pdfHeight = Number(billHeight) * pointsPerMM;
+      } else {
+        // Calculate height from canvas aspect ratio
+        pdfHeight = pdfWidth * Number(receiptHeight) / Number(receiptWidth);
+      }
+    } else {
+      // Fallback: calculate from received canvas dimensions (convert pixels to points)
+      // Assuming 96 DPI screen: pixels * (72 / 96) = points
+      pdfWidth = Number(receiptWidth) * (72 / 96);
+      pdfHeight = Number(receiptHeight) * (72 / 96);
+    }
+    // Clamp to reasonable PDF sizes
+    pdfWidth = Math.min(850.4, Math.max(113.4, pdfWidth));
+    pdfHeight = Math.min(1275.6, Math.max(113.4, pdfHeight));
     const doc = new PDFDocument({ size: [pdfWidth, pdfHeight], margin: 0 });
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
@@ -563,7 +582,8 @@ app.post('/api/exports/pdf', async (req, res) => {
       const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.pdf`;
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` }).send(Buffer.concat(chunks));
     });
-    doc.image(Buffer.from(receiptImage.slice('data:image/png;base64,'.length), 'base64'), 0, 0, { fit: [pdfWidth, pdfHeight], align: 'center', valign: 'top' });
+    // Place image at 0,0 filling the entire page (no center alignment)
+    doc.image(Buffer.from(receiptImage.slice('data:image/png;base64,'.length), 'base64'), 0, 0, { fit: [pdfWidth, pdfHeight], align: 'left', valign: 'top' });
     doc.end();
   } catch (err) { console.error('PDF export failed:', err); res.status(500).json({ error: 'Failed to create PDF' }); }
 });
