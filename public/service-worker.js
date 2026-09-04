@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laxmi-narayan-shell-v2';
+const CACHE_NAME = 'laxmi-narayan-shell-v3';
 const SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/assets/html2canvas.min.js', '/assets/logo.png'];
 
 self.addEventListener('install', event => {

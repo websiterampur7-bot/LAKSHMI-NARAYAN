@@ -140,6 +140,17 @@
     .splash { background: #ffffff; }
     .splash img { width: min(66vw, 290px); }
     .brand-logo { height: auto; }
+    .auth-page { min-height: calc(100vh - 58px); display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    .auth-card { width: min(100%, 420px); }
+    .auth-card .brand-logo { display: block; width: min(62vw, 220px); max-height: none; margin: 0 auto 22px; }
+    .auth-card h1 { text-align: center; color: #173c35; margin-bottom: 20px; }
+    .password-field { display: flex; align-items: stretch; }
+    .password-field input { min-width: 0; flex: 1; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+    .password-field .auth-link { border: 1px solid var(--border-color); border-left: 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; background: #f8faf9; }
+    .auth-actions { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+    .auth-link { border: 0; background: transparent; color: #1a3a52; padding: 4px; min-height: 32px; font-size: .9rem; }
+    .auth-link:hover { color: #c28b45; }
+    .auth-message { min-height: 24px; margin-top: 12px; }
     @media (max-width: 600px) {
       #dashboardPage .container { padding: 28px 16px 24px; }
       #dashboardPage .brand-logo { width: min(76vw, 250px); margin-bottom: 18px; }
@@ -1223,6 +1234,21 @@
     </div>
   </div>
 
+  <div class="page active" id="authPage">
+    <div class="auth-page">
+      <form class="card auth-card" id="loginForm" onsubmit="login(event)">
+        <img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN">
+        <h1 id="authTitle">Login</h1>
+        <div class="form-group"><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="email" required></div>
+        <div class="form-group" id="authPasswordGroup"><label for="authPassword">Password</label><div class="password-field"><input id="authPassword" type="password" autocomplete="current-password"><button class="auth-link" type="button" onclick="togglePassword()" aria-label="Show or hide password">Show</button></div></div>
+        <div class="form-group hidden" id="authConfirmGroup"><label for="authConfirmPassword">Confirm password</label><input id="authConfirmPassword" type="password" autocomplete="new-password"></div>
+        <div class="auth-message" id="authMessage" aria-live="polite"></div>
+        <button class="btn-primary btn-block" id="authSubmit" type="submit">Login</button>
+        <div class="auth-actions"><button class="auth-link" id="forgotPasswordLink" type="button" onclick="showForgotPassword()">Forgot Password?</button><button class="auth-link hidden" id="changePasswordLink" type="button" onclick="showChangePassword()">Change Password</button><button class="auth-link hidden" id="backToLogin" type="button" onclick="showLogin()">Back to Login</button></div>
+      </form>
+    </div>
+  </div>
+
   <!-- DASHBOARD PAGE -->
   <div class="page active" id="dashboardPage">
     <div class="container" style="max-width: 900px; margin-top: var(--spacing-2xl);">
@@ -1553,9 +1579,13 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/html2canvas.min.js"></script>
   <script>
     // ==================== STATE MANAGEMENT ====================
+    const LOGO_ASSET = 'assets/logo.png';
+    let supabaseClient;
+    let authMode = 'login';
     const state = {
       currentPage: 'dashboard',
       currentAdminTab: 'retail',
@@ -1567,14 +1597,19 @@
       billSize: 'thermal80',
       editingItemType: null,
       editingItemId: null,
+      session: null,
     };
 
     // ==================== API HELPERS ====================
     const api = {
       async request(url, options = {}) {
+        const headers = new Headers(options.headers || {});
+        if (state.session?.access_token) headers.set('Authorization', `Bearer ${state.session.access_token}`);
+        options.headers = headers;
         const res = await fetch(url, options);
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
+          if (res.status === 401 && supabaseClient) await supabaseClient.auth.signOut();
           throw new Error(data.error || 'Request failed');
         }
         return data;
@@ -1651,6 +1686,7 @@
 
     // ==================== NAVIGATION ====================
     function renderPage(page) {
+      if (!state.session && page !== 'auth') return showLogin();
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(page + 'Page').classList.add('active');
       state.currentPage = page;
@@ -1671,6 +1707,7 @@
     }
 
     function navigateTo(page) {
+      if (!state.session) return showLogin();
       if (!document.getElementById(page + 'Page') || page === state.currentPage) {
         return;
       }
@@ -1702,8 +1739,10 @@
       const navButtons = document.getElementById('navButtons');
       navButtons.innerHTML = '';
 
+      if (state.session) navButtons.innerHTML = '<button class="btn-secondary" onclick="showChangePassword()">Change Password</button><button class="btn-secondary" onclick="logout()">Logout</button>';
+
       if (state.currentPage !== 'dashboard') {
-        navButtons.innerHTML = `<button class="btn-secondary nav-back" onclick="goBack()">← Dashboard</button>`;
+        navButtons.innerHTML += `<button class="btn-secondary nav-back" onclick="goBack()">← Dashboard</button>`;
       }
     }
 
@@ -2106,6 +2145,123 @@
     }
 
     // ==================== NOTIFICATIONS ====================
+    function setAuthMessage(message, type = 'info') {
+      const element = document.getElementById('authMessage');
+      element.textContent = message;
+      element.className = `auth-message text-${type === 'error' ? 'error' : type === 'success' ? 'success' : 'secondary'}`;
+    }
+
+    function configureAuthForm(mode) {
+      authMode = mode;
+      const isLogin = mode === 'login';
+      const needsEmail = isLogin || mode === 'forgot';
+      const needsPassword = isLogin || mode === 'reset' || mode === 'change';
+      const password = document.getElementById('authPassword');
+      const email = document.getElementById('authEmail');
+      document.getElementById('authTitle').textContent = isLogin ? 'Login' : mode === 'forgot' ? 'Forgot Password' : mode === 'reset' ? 'Create New Password' : 'Change Password';
+      document.getElementById('authSubmit').textContent = isLogin ? 'Login' : mode === 'forgot' ? 'Send Reset Email' : 'Update Password';
+      document.getElementById('authPasswordGroup').classList.toggle('hidden', !needsPassword);
+      document.getElementById('authConfirmGroup').classList.toggle('hidden', !(mode === 'reset' || mode === 'change'));
+      document.getElementById('forgotPasswordLink').classList.toggle('hidden', !isLogin);
+      document.getElementById('changePasswordLink').classList.toggle('hidden', !isLogin || !state.session);
+      document.getElementById('backToLogin').classList.toggle('hidden', isLogin);
+      email.classList.toggle('hidden', !needsEmail);
+      email.required = needsEmail;
+      password.required = needsPassword;
+      document.getElementById('authConfirmPassword').required = mode === 'reset' || mode === 'change';
+      if (!needsEmail) email.value = state.session?.user?.email || '';
+      if (mode === 'reset') email.value = '';
+      document.getElementById('authMessage').textContent = '';
+    }
+
+    function showLogin() {
+      renderPage('auth');
+      configureAuthForm('login');
+    }
+
+    function showForgotPassword() {
+      renderPage('auth');
+      configureAuthForm('forgot');
+    }
+
+    function showResetPassword() {
+      renderPage('auth');
+      configureAuthForm('reset');
+      setAuthMessage('Choose a new password.');
+    }
+
+    function showChangePassword() {
+      renderPage('auth');
+      configureAuthForm('change');
+    }
+
+    function togglePassword() {
+      const input = document.getElementById('authPassword');
+      input.type = input.type === 'password' ? 'text' : 'password';
+      document.querySelector('#authPasswordGroup .auth-link').textContent = input.type === 'password' ? 'Show' : 'Hide';
+    }
+
+    async function login(event) {
+      event.preventDefault();
+      if (!supabaseClient) return setAuthMessage('Authentication is not configured.', 'error');
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      try {
+        document.getElementById('authSubmit').disabled = true;
+        if (authMode === 'forgot') {
+          await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}${window.location.pathname}` });
+          setAuthMessage('If the email is registered, a reset link has been sent.', 'success');
+        } else if (authMode === 'reset' || authMode === 'change') {
+          const confirmation = document.getElementById('authConfirmPassword').value;
+          if (password !== confirmation) throw new Error('Passwords do not match');
+          if (password.length < 6) throw new Error('Password must be at least 6 characters');
+          const { error } = await supabaseClient.auth.updateUser({ password });
+          if (error) throw error;
+          setAuthMessage('Password updated successfully.', 'success');
+          if (authMode === 'reset') showLogin();
+        } else {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          state.session = data.session;
+          window.history.replaceState({ page: 'dashboard' }, '', window.location.href.split('#')[0]);
+          renderPage('dashboard');
+        }
+      } catch (error) {
+        setAuthMessage(error.message || 'Authentication failed', 'error');
+      } finally {
+        document.getElementById('authSubmit').disabled = false;
+      }
+    }
+
+    async function logout() {
+      if (supabaseClient) await supabaseClient.auth.signOut();
+      state.session = null;
+      showLogin();
+    }
+
+    async function initializeAuth() {
+      try {
+        const config = await fetch('/api/config').then(response => {
+          if (!response.ok) throw new Error('Supabase authentication is not configured');
+          return response.json();
+        });
+        supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+        const { data } = await supabaseClient.auth.getSession();
+        state.session = data.session;
+        supabaseClient.auth.onAuthStateChange((_event, session) => {
+          state.session = session;
+          updateHeader();
+          if (!session) showLogin();
+        });
+        if (window.location.hash.includes('type=recovery')) showResetPassword();
+        else if (state.session) renderPage('dashboard');
+        else showLogin();
+      } catch (error) {
+        showLogin();
+        setAuthMessage(error.message, 'error');
+      }
+    }
+
     function showNotification(message, type = 'info') {
       const notification = document.createElement('div');
       notification.className = `notification ${type}`;
@@ -2127,8 +2283,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       window.history.replaceState({ page: 'dashboard' }, '', window.location.href);
-      renderPage('dashboard');
-      updateHeader();
+      initializeAuth();
       if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/service-worker.js').catch(() => {});
       console.log('✨ Lakshmi Narayan Billing System loaded successfully');
     });
@@ -2223,7 +2378,7 @@
       const rows = items.map(item => `<div class="receipt-item"><div class="receipt-item-name">${item.name}</div><div>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</div><div>${item.weight || 'N/A'}</div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
       const customer = [bill.customer_name && `Customer Name: ${bill.customer_name}`, bill.customer_phone && `Phone: ${bill.customer_phone}`].filter(Boolean).join('<br>');
       const notes = [bill.description && `Description: ${bill.description}`, bill.note && `Note: ${bill.note}`].filter(Boolean).join('<br>');
-      receiptContainer.innerHTML = `<div class="receipt-container size-${size.preset}"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-business-name">LAXMI NARAYAN NAMKEEN BHANDAR</div><div>Nayagunj Rampur</div><div>Ph.No.: 9045032878</div></div><div class="receipt-estimate-info"><strong>ESTIMATE</strong><br>Estimate No: ${bill.invoice_number || ''}<br>Date: ${bill.date || ''}${bill.time ? ` | ${bill.time}` : ''}</div>${customer ? `<div class="receipt-customer">${customer}</div>` : ''}<div class="receipt-items"><div class="receipt-item receipt-table-head"><div>Item Name</div><div>Quantity</div><div>Weight</div><div>Price</div><div>Amount</div></div>${rows}</div><div class="receipt-summary"><span>Qty: ${items.reduce((sum, item) => sum + Number(item.quantity), 0)}</span><span>Items: ${items.length}</span></div><div class="receipt-total">Total: ₹ ${Number(bill.total).toFixed(2)}</div>${notes ? `<div class="receipt-notes">${notes}</div>` : ''}</div>`;
+      receiptContainer.innerHTML = `<div class="receipt-container size-${size.preset}"><div class="receipt-header"><img class="brand-logo" src="${LOGO_ASSET}" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-business-name">LAXMI NARAYAN NAMKEEN BHANDAR</div><div>Nayagunj Rampur</div><div>Ph.No.: 9045032878</div></div><div class="receipt-estimate-info"><strong>ESTIMATE</strong><br>Estimate No: ${bill.invoice_number || ''}<br>Date: ${bill.date || ''}${bill.time ? ` | ${bill.time}` : ''}</div>${customer ? `<div class="receipt-customer">${customer}</div>` : ''}<div class="receipt-items"><div class="receipt-item receipt-table-head"><div>Item Name</div><div>Quantity</div><div>Weight</div><div>Price</div><div>Amount</div></div>${rows}</div><div class="receipt-summary"><span>Qty: ${items.reduce((sum, item) => sum + Number(item.quantity), 0)}</span><span>Items: ${items.length}</span></div><div class="receipt-total">Total: ₹ ${Number(bill.total).toFixed(2)}</div>${notes ? `<div class="receipt-notes">${notes}</div>` : ''}</div>`;
       if (size.preset === 'custom') { receiptContainer.firstElementChild.style.setProperty('--custom-width', `${size.width}mm`); receiptContainer.firstElementChild.style.setProperty('--custom-height', `${size.height}mm`); }
       applyReceiptPreviewSize();
       state.lastEstimate = { type, bill };

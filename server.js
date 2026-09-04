@@ -49,6 +49,37 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '8mb' }));
 app.use(express.static('public'));
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+app.get('/api/config', (req, res) => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return res.status(503).json({ error: 'Supabase authentication is not configured' });
+  }
+  res.json({ supabaseUrl: SUPABASE_URL, supabaseAnonKey: SUPABASE_ANON_KEY });
+});
+
+async function requireAuth(req, res, next) {
+  const authorization = req.get('authorization');
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !authorization?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/auth/v1/user`, {
+      headers: { apikey: SUPABASE_ANON_KEY, authorization },
+    });
+    if (!response.ok) return res.status(401).json({ error: 'Invalid or expired session' });
+    req.user = await response.json();
+    next();
+  } catch (err) {
+    console.error('Supabase session validation failed:', err);
+    res.status(401).json({ error: 'Could not validate session' });
+  }
+}
+
+app.use('/api', (req, res, next) => req.path === '/config' ? next() : requireAuth(req, res, next));
+
 // ==================== HEALTH CHECK ====================
 app.get('/health', async (req, res) => {
   try {
