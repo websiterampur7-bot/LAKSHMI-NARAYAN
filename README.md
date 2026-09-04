@@ -56,17 +56,6 @@ DB_PORT=5432
 DB_NAME=lakshmi_narayan
 ```
 
-### Supabase Auth
-
-Create/configure a Supabase project for email/password authentication, then add these server environment variables. Use only the public anon key; never expose a `service_role` key.
-
-```
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-public-anon-key
-```
-
-Add the deployed site URL to Supabase Auth URL configuration and enable email/password provider. Password reset links return to the application URL.
-
 ---
 
 ## 🎯 Features
