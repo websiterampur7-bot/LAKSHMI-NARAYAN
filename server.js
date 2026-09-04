@@ -507,7 +507,7 @@ app.post('/api/wholesale-bills', async (req, res) => {
 // Get retail bills
 app.get('/api/retail-bills', async (req, res) => {
   try {
-    const result = await queryAsync('SELECT id, invoice_number, date, time, items, total, created_at FROM retail_bills ORDER BY created_at DESC LIMIT 50');
+    const result = await queryAsync('SELECT id, invoice_number, date, time, items, total, customer_name, customer_phone, note, created_at FROM retail_bills ORDER BY created_at DESC LIMIT 50');
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching retail bills:', err);
@@ -518,11 +518,28 @@ app.get('/api/retail-bills', async (req, res) => {
 // Get wholesale bills
 app.get('/api/wholesale-bills', async (req, res) => {
   try {
-    const result = await queryAsync('SELECT id, invoice_number, date, time, items, total, created_at FROM wholesale_bills ORDER BY created_at DESC LIMIT 50');
+    const result = await queryAsync('SELECT id, invoice_number, date, time, items, total, customer_name, customer_phone, note, created_at FROM wholesale_bills ORDER BY created_at DESC LIMIT 50');
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching wholesale bills:', err);
     res.status(500).json({ error: 'Failed to fetch bills' });
+  }
+});
+
+app.get('/api/bill-history', async (req, res) => {
+  try {
+    const result = await queryAsync(`
+      SELECT id, invoice_number, date, time, items, total, customer_name, customer_phone, note, created_at, 'retail' AS bill_type
+      FROM retail_bills
+      UNION ALL
+      SELECT id, invoice_number, date, time, items, total, customer_name, customer_phone, note, created_at, 'wholesale' AS bill_type
+      FROM wholesale_bills
+      ORDER BY created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching bill history:', err);
+    res.status(500).json({ error: 'Failed to fetch bill history' });
   }
 });
 

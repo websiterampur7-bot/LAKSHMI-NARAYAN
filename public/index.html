@@ -110,6 +110,13 @@
     .header { background: #ffffff; border-bottom: 1px solid #dfe7e3; padding: 12px 0; }
     .header-title { font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; color: #173c35; }
     .dashboard-content { max-width: 760px; margin: 0 auto; }
+    #dashboardPage { position: relative; isolation: isolate; min-height: calc(100vh - 58px); overflow: hidden; background: linear-gradient(145deg, rgba(244, 249, 246, 0.9), rgba(255, 251, 243, 0.78)); }
+    #dashboardPage::before, #dashboardPage::after { content: ''; position: absolute; pointer-events: none; z-index: -1; inset: -12% -8%; }
+    #dashboardPage::before { background: radial-gradient(ellipse at 8% 74%, rgba(47, 112, 96, 0.15) 0 18%, transparent 48%), radial-gradient(ellipse at 93% 22%, rgba(207, 155, 83, 0.16) 0 16%, transparent 45%); transform: rotate(-5deg) translate3d(0, 0, 0); animation: dashboardFlow 24s ease-in-out infinite alternate; }
+    #dashboardPage::after { inset: 28% -12% -18%; border-top: 1px solid rgba(47, 112, 96, 0.13); border-radius: 48% 52% 0 0 / 22% 18% 0 0; box-shadow: 0 -18px 0 rgba(207, 155, 83, 0.07), 0 -36px 0 rgba(47, 112, 96, 0.06); transform: rotate(-3deg); animation: dashboardWave 28s ease-in-out infinite alternate; }
+    @keyframes dashboardFlow { from { transform: rotate(-5deg) translate3d(-1%, -1%, 0) scale(1); } to { transform: rotate(-2deg) translate3d(1%, 1%, 0) scale(1.04); } }
+    @keyframes dashboardWave { from { transform: rotate(-3deg) translateX(-1%); } to { transform: rotate(1deg) translateX(2%); } }
+    @media (prefers-reduced-motion: reduce) { #dashboardPage::before, #dashboardPage::after { animation: none; } }
     #dashboardPage .container { margin-top: 0 !important; padding-top: 44px; }
     #dashboardPage .brand-logo { display: block; width: min(62vw, 250px); height: auto; max-height: none; margin: 0 auto 26px; filter: drop-shadow(0 8px 18px rgba(29, 76, 64, 0.13)); animation: brandLogoReveal 700ms 120ms both cubic-bezier(.2,.8,.2,1); }
     #dashboardPage .brand-heading { margin: 0 auto 30px; font-size: clamp(1.5rem, 4vw, 2.25rem); text-align: center; text-shadow: 0 2px 18px rgba(194, 139, 69, 0.12); animation: headingReveal 600ms 260ms both ease-out; }
@@ -1010,6 +1017,7 @@
         page-break-after: always;
       }
       body::before, body::after { display: none !important; }
+      #dashboardPage::before, #dashboardPage::after { display: none !important; }
     }
 
     /* ==================== ADMIN PANEL ==================== */
@@ -1105,6 +1113,14 @@
     .receipt-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 16px; }
     .customer-fields { display: grid; gap: 12px; margin-top: 16px; }
     .settings-grid { max-width: 720px; }
+    .history-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
+    .history-list { display: grid; gap: var(--spacing-sm); }
+    .history-row { display: grid; grid-template-columns: 1.1fr 1fr 0.8fr 1fr 0.9fr auto; gap: var(--spacing-sm); align-items: center; padding: 12px; background: rgba(255, 255, 255, 0.88); border: 1px solid #dce6e1; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+    .history-row strong { color: #173c35; }
+    .history-meta { color: var(--text-secondary); font-size: 0.82rem; }
+    .history-actions { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+    .history-actions button { min-height: 34px; padding: 4px 8px; font-size: 0.78rem; }
+    @media (max-width: 768px) { .history-toolbar { grid-template-columns: 1fr; gap: var(--spacing-sm); } .history-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .history-actions { grid-column: 1 / -1; justify-content: stretch; } .history-actions button { flex: 1; } }
 
     /* ==================== RESPONSIVE ==================== */
     @media (max-width: 768px) {
@@ -1168,6 +1184,7 @@
       *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
       body::before, body::after { animation: none; }
       .splash { animation: none; opacity: 0; visibility: hidden; }
+      #dashboardPage::before, #dashboardPage::after { animation: none; }
       #dashboardPage .brand-logo, #dashboardPage .brand-heading { animation: none; opacity: 1; transform: none; }
       #dashboardPage .card.action-card { animation: none; opacity: 1; transform: none; }
     }
@@ -1208,6 +1225,10 @@
           <div class="card action-card" onclick="navigateTo('settings')">
             <h2>Optional Settings</h2>
             <p class="text-secondary">Shop and social details</p>
+          </div>
+          <div class="card action-card" onclick="navigateTo('billHistory')">
+            <h2>Bill History</h2>
+            <p class="text-secondary">View and reprint past estimates</p>
           </div>
         </div>
       </div>
@@ -1280,6 +1301,28 @@
         <div class="form-group"><label for="logoFile">Optional logo management</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp"></div>
         <div id="settingsMessage"></div><button class="btn-primary" type="submit">Save Optional Settings</button>
       </form>
+    </div>
+  </div>
+
+  <div class="page" id="billHistoryPage">
+    <div class="container">
+      <div class="admin-panel">
+        <div style="margin-bottom: var(--spacing-lg);">
+          <h1>Bill History</h1>
+          <p class="text-secondary">Search and open saved estimates</p>
+        </div>
+        <div class="history-toolbar">
+          <input type="search" id="historySearch" placeholder="Search bill number or customer" oninput="renderBillHistory()">
+          <select id="historyType" onchange="renderBillHistory()">
+            <option value="all">All bills</option>
+            <option value="retail">Retail</option>
+            <option value="wholesale">Wholesale</option>
+          </select>
+        </div>
+        <div id="billHistoryContainer" class="history-list" aria-live="polite">
+          <div class="empty-state"><p>Loading bill history...</p></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1496,6 +1539,7 @@
       wholesaleItems: [],
       retailBillItems: [],
       wholesaleBillItems: [],
+      billHistory: [],
       editingItemType: null,
       editingItemId: null,
     };
@@ -1574,6 +1618,10 @@
           body: JSON.stringify(data),
         });
       },
+
+      async getBillHistory() {
+        return this.request('/api/bill-history');
+      },
     };
 
     // ==================== NAVIGATION ====================
@@ -1586,6 +1634,8 @@
 
       if (page === 'adminPanel') {
         loadAdminItems();
+      } else if (page === 'billHistory') {
+        loadBillHistory();
       } else if (page === 'retailBilling') {
         clearRetailBill();
         loadRetailItems();
@@ -1949,6 +1999,85 @@
     function clearWholesaleBill() {
       state.wholesaleBillItems = [];
       renderWholesaleBill();
+    }
+
+    async function loadBillHistory() {
+      const container = document.getElementById('billHistoryContainer');
+      container.innerHTML = '<div class="empty-state"><p>Loading bill history...</p></div>';
+      try {
+        state.billHistory = await api.getBillHistory();
+        renderBillHistory();
+      } catch (err) {
+        container.innerHTML = '<div class="empty-state"><p>Could not load bill history</p></div>';
+        showNotification('Error loading bill history', 'error');
+      }
+    }
+
+    function safeText(value) {
+      return String(value ?? '').replace(/[<>&"']/g, character => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[character]);
+    }
+
+    function historicalReceiptBill(bill) {
+      const copy = { ...bill };
+      if (copy.note && !copy.description) {
+        const notes = String(copy.note).split('\n');
+        copy.description = notes.find(value => value.startsWith('Description: '))?.slice(13) || '';
+        copy.note = notes.find(value => value.startsWith('Note: '))?.slice(6) || '';
+      }
+      return copy;
+    }
+
+    function renderBillHistory() {
+      const container = document.getElementById('billHistoryContainer');
+      if (!container) return;
+      const search = (document.getElementById('historySearch')?.value || '').trim().toLowerCase();
+      const type = document.getElementById('historyType')?.value || 'all';
+      const bills = state.billHistory.filter(bill => {
+        const matchesType = type === 'all' || bill.bill_type === type;
+        const haystack = `${bill.invoice_number} ${bill.customer_name || ''} ${bill.date || ''}`.toLowerCase();
+        return matchesType && haystack.includes(search);
+      });
+      if (!bills.length) {
+        container.innerHTML = '<div class="empty-state"><p>No saved estimates found</p></div>';
+        return;
+      }
+      container.innerHTML = bills.map(bill => `
+        <div class="history-row">
+          <div><strong>${safeText(bill.invoice_number)}</strong><div class="history-meta">${bill.bill_type === 'retail' ? 'Retail' : 'Wholesale'}</div></div>
+          <div class="history-meta">${safeText(bill.date)}</div>
+          <div class="history-meta">${safeText(bill.time)}</div>
+          <div class="history-meta">${safeText(bill.customer_name || 'Walk-in customer')}</div>
+          <strong>₹ ${Number(bill.total).toFixed(2)}</strong>
+          <div class="history-actions">
+            <button class="btn-secondary" onclick="viewHistoricalBill(${bill.id}, '${bill.bill_type}')">View</button>
+            <button class="btn-secondary" onclick="reprintHistoricalBill(${bill.id}, '${bill.bill_type}')">Reprint</button>
+            <button class="btn-secondary" onclick="exportHistoricalBill(${bill.id}, '${bill.bill_type}', 'pdf')">PDF</button>
+            <button class="btn-secondary" onclick="exportHistoricalBill(${bill.id}, '${bill.bill_type}', 'png')">PNG</button>
+          </div>
+        </div>`).join('');
+    }
+
+    function findHistoricalBill(id, type) {
+      return state.billHistory.find(bill => bill.id === id && bill.bill_type === type);
+    }
+
+    function viewHistoricalBill(id, type) {
+      const bill = findHistoricalBill(id, type);
+      if (bill) renderEstimate(type, historicalReceiptBill(bill));
+    }
+
+    function reprintHistoricalBill(id, type) {
+      const bill = findHistoricalBill(id, type);
+      if (!bill) return;
+      renderEstimate(type, historicalReceiptBill(bill));
+      setTimeout(printEstimate, 0);
+    }
+
+    function exportHistoricalBill(id, type, format) {
+      const bill = findHistoricalBill(id, type);
+      if (!bill) return;
+      renderEstimate(type, historicalReceiptBill(bill));
+      setTimeout(() => downloadEstimate(format), 0);
     }
 
     // ==================== NOTIFICATIONS ====================

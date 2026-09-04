@@ -193,6 +193,9 @@ lakshmi-narayan-billing/
 - `POST /api/wholesale-bills` - Generate wholesale bill
 - `GET /api/wholesale-bills` - Get recent wholesale bills
 
+### Bill History
+- `GET /api/bill-history` - Get saved retail and wholesale estimates for history and reprinting
+
 ## 📱 Responsive Breakpoints
 
 - **Mobile**: < 768px
