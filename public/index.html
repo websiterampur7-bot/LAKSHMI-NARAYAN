@@ -1500,8 +1500,8 @@
   <!-- RECEIPT PAGE (for printing) -->
   <div class="page" id="receiptPage">
     <div style="padding: var(--spacing-lg); text-align: center;">
-      <div class="receipt-size-control"><label for="billSize">Bill Size</label><select id="billSize" onchange="changeBillSize()"><option value="thermal58">Thermal 58mm</option><option value="thermal80" selected>Thermal 80mm</option><option value="a6">A6</option><option value="a5">A5</option><option value="a4">A4</option><option value="letter">Letter</option><option value="legal">Legal</option><option value="custom">Custom Size</option></select><div id="customSizeFields" class="custom-size-fields"><input id="customWidth" type="number" min="40" max="300" step="1" value="80" oninput="changeBillSize()" aria-label="Custom width in millimeters"><input id="customHeight" type="number" min="40" max="450" step="1" value="120" oninput="changeBillSize()" aria-label="Custom height in millimeters"></div></div>
-      <div class="receipt-actions"><button class="btn-primary" onclick="downloadEstimate('pdf')">Download PDF</button><button class="btn-secondary" onclick="downloadEstimate('png')">Download PNG</button><button class="btn-secondary" onclick="printEstimate()">Print Estimate</button><button class="btn-secondary" onclick="goToDashboard()">Back to Dashboard</button></div>
+      <div class="receipt-size-control"><label for="billSize">Bill Size</label><select id="billSize" onchange="changeBillSize()"><option value="thermal58" selected>Thermal 58mm</option><option value="thermal80">Thermal 80mm</option><option value="a6">A6</option><option value="a5">A5</option><option value="a4">A4</option><option value="letter">Letter</option><option value="legal">Legal</option><option value="custom">Custom Size</option></select><div id="customSizeFields" class="custom-size-fields"><input id="customWidth" type="number" min="40" max="300" step="1" value="80" oninput="changeBillSize()" aria-label="Custom width in millimeters"><input id="customHeight" type="number" min="40" max="450" step="1" value="120" oninput="changeBillSize()" aria-label="Custom height in millimeters"></div></div>
+      <div class="receipt-actions"><button class="btn-primary" onclick="printEstimate()">Print / Share to SEZNIK</button><button class="btn-secondary" onclick="downloadEstimate('pdf')">Download PDF</button><button class="btn-secondary" onclick="downloadEstimate('png')">Download PNG</button><button class="btn-secondary" onclick="browserPrintEstimate()">Browser Print</button><button class="btn-secondary" onclick="goToDashboard()">Back to Dashboard</button></div>
     </div>
     <div id="receiptContainer"></div>
   </div>
@@ -1565,7 +1565,7 @@
       retailBillItems: [],
       wholesaleBillItems: [],
       billHistory: [],
-      billSize: 'thermal80',
+      billSize: 'thermal58',
       editingItemType: null,
       editingItemId: null,
     };
@@ -2242,28 +2242,24 @@
     }
     generateRetailBill = () => generateEstimate('retail');
     generateWholesaleBill = () => generateEstimate('wholesale');
-    async function deliverExport(blob, format) {
-      const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.${format}`;
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      if (isIOS && navigator.share && navigator.canShare) {
+    async function deliverExport(blob, format, requestedFilename, shareTitle = 'Estimate') {
+      const filename = requestedFilename || `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.${format}`;
+      if (navigator.share && navigator.canShare) {
         const file = new File([blob], filename, { type: blob.type });
         if (navigator.canShare({ files: [file] })) {
-          try { await navigator.share({ files: [file], title: 'Estimate' }); return; }
+          try { await navigator.share({ files: [file], title: shareTitle }); return; }
           catch (error) { if (error.name === 'AbortError') return; }
         }
       }
 
       const url = URL.createObjectURL(blob);
-      if (isIOS) {
-        const opened = window.open(url, '_blank');
-        if (!opened) window.location.href = url;
-      } else {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
     }
 
     async function downloadEstimate(format) {
@@ -2286,7 +2282,30 @@
         await deliverExport(await response.blob(), format);
       } catch (err) { showNotification(`Could not download ${format.toUpperCase()}`, 'error'); }
     }
-    function printEstimate() { const size = currentBillSize(); document.documentElement.style.setProperty('--print-width', `${size.width}mm`); document.documentElement.style.setProperty('--print-height', size.height ? `${size.height}mm` : 'auto'); window.print(); }
+    async function printEstimate() {
+      if (!state.lastEstimate) return;
+      try {
+        await document.fonts.ready;
+        const receipt = document.querySelector('#receiptPage .receipt-container');
+        if (!receipt) throw new Error('Receipt preview is unavailable');
+        const size = currentBillSize();
+        const previousMaxWidth = receipt.style.maxWidth;
+        const previousPreviewScale = receipt.style.getPropertyValue('--preview-scale');
+        receipt.style.maxWidth = 'none';
+        receipt.style.setProperty('--preview-scale', '1');
+        const targetWidth = size.preset === 'thermal58' ? Math.round(58 / 25.4 * 203) : null;
+        const scale = targetWidth ? targetWidth / receipt.offsetWidth : Math.min(3, Math.max(2, window.devicePixelRatio || 2));
+        const canvas = await html2canvas(receipt, { backgroundColor: '#ffffff', scale, useCORS: true, logging: false });
+        receipt.style.maxWidth = previousMaxWidth;
+        receipt.style.setProperty('--preview-scale', previousPreviewScale || '1');
+        const blob = await new Promise((resolve, reject) => canvas.toBlob(file => file ? resolve(file) : reject(new Error('Receipt image could not be created')), 'image/png'));
+        const invoiceNumber = String(state.lastEstimate.bill.invoice_number || 'BILL').replace(/[^a-z0-9_-]/gi, '-');
+        await deliverExport(blob, 'png', `LAXMI-NARAYAN-RECEIPT-${invoiceNumber}.png`, 'Share to SEZNIK Printer');
+      } catch (err) {
+        showNotification('Could not prepare the receipt for printing', 'error');
+      }
+    }
+    function browserPrintEstimate() { const size = currentBillSize(); document.documentElement.style.setProperty('--print-width', `${size.width}mm`); document.documentElement.style.setProperty('--print-height', size.height ? `${size.height}mm` : 'auto'); window.print(); }
     function currentBillSize() {
       const preset = document.getElementById('billSize')?.value || state.billSize || 'thermal80';
       const dimensions = { thermal58: { width: 58 }, thermal80: { width: 80 }, a6: { width: 105, height: 148 }, a5: { width: 148, height: 210 }, a4: { width: 210, height: 297 }, letter: { width: 216, height: 279 }, legal: { width: 216, height: 356 } };
