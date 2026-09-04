@@ -661,7 +661,7 @@
       }
 
       .billing-left .form-row {
-        grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: var(--spacing-sm);
       }
 
@@ -732,7 +732,7 @@
 
     @media (max-width: 768px) {
       .bill-item {
-        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 40px;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 0.9fr) 40px;
         gap: 4px;
         padding: 4px;
         font-size: 0.78rem;
@@ -918,7 +918,7 @@
 
     .receipt-item {
       display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(50px, 0.85fr) minmax(48px, 0.8fr) minmax(60px, 1fr);
+      grid-template-columns: minmax(0, 1.2fr) minmax(50px, 0.8fr) minmax(42px, 0.7fr) minmax(52px, 0.8fr) minmax(58px, 0.9fr);
       gap: 5px;
       align-items: start;
       padding: 5px 0;
@@ -1302,11 +1302,11 @@
             <h3>Enter Quantity</h3>
             <div class="form-row">
               <div>
-                <label for="retailQuantity">Quantity / Weight</label>
+                <label for="retailQuantity">Quantity</label>
                 <input type="number" id="retailQuantity" placeholder="0.00" step="0.01" min="0">
               </div>
               <div>
-                <label for="retailUnit">Unit</label>
+                <label for="retailUnit">Packaging</label>
                 <input type="text" id="retailUnit" readonly placeholder="Unit">
               </div>
               <div>
@@ -1314,6 +1314,10 @@
                 <input type="number" id="retailPrice" readonly placeholder="0.00" step="0.01">
               </div>
             </div>
+              <div>
+                <label for="retailWeight">Weight</label>
+                <input type="text" id="retailWeight" readonly placeholder="Not set">
+              </div>
             <button class="btn-success btn-lg btn-block mt-md" onclick="addRetailItem()">+ Add Item</button>
           </div>
         </div>
@@ -1372,11 +1376,11 @@
             <h3>Enter Quantity</h3>
             <div class="form-row">
               <div>
-                <label for="wholesaleQuantity">Quantity / Weight</label>
+                <label for="wholesaleQuantity">Quantity</label>
                 <input type="number" id="wholesaleQuantity" placeholder="0.00" step="0.01" min="0">
               </div>
               <div>
-                <label for="wholesaleUnit">Unit</label>
+                <label for="wholesaleUnit">Packaging</label>
                 <input type="text" id="wholesaleUnit" readonly placeholder="Unit">
               </div>
               <div>
@@ -1384,6 +1388,10 @@
                 <input type="number" id="wholesalePrice" readonly placeholder="0.00" step="0.01">
               </div>
             </div>
+              <div>
+                <label for="wholesaleWeight">Weight (KG)</label>
+                <input type="text" id="wholesaleWeight" readonly placeholder="Not set">
+              </div>
             <button class="btn-success btn-lg btn-block mt-md" onclick="addWholesaleItem()">+ Add Item</button>
           </div>
         </div>
@@ -1453,6 +1461,11 @@
             <option value="Packet">Packet</option>
             <option value="Bag">Bag</option>
           </select>
+        </div>
+
+        <div class="form-group">
+          <label for="itemWeight">Default Weight</label>
+          <select id="itemWeight"></select>
         </div>
 
         <div class="form-row">
@@ -1731,9 +1744,9 @@
       document.getElementById('itemModal').classList.add('active');
       document.getElementById('itemName').value = '';
       document.getElementById('itemUnit').value = '';
-      document.getElementById('purchaseRate').value = '';
       document.getElementById('mrp').value = '';
-      document.getElementById('sellingPrice').value = '';
+      renderWeightOptions(type);
+      document.getElementById('itemWeight').value = '';
       document.getElementById('itemFormMessage').innerHTML = '';
     }
 
@@ -1746,9 +1759,9 @@
       document.getElementById('itemModalTitle').textContent = 'Edit ' + (type === 'retail' ? 'Retail' : 'Wholesale') + ' Item';
       document.getElementById('itemName').value = item.name;
       document.getElementById('itemUnit').value = item.unit;
-      document.getElementById('purchaseRate').value = item.purchase_rate;
       document.getElementById('mrp').value = item.mrp;
-      document.getElementById('sellingPrice').value = item.selling_price;
+      renderWeightOptions(type);
+      document.getElementById('itemWeight').value = item.weight || '';
       document.getElementById('itemFormMessage').innerHTML = '';
       document.getElementById('itemModal').classList.add('active');
     }
@@ -1870,6 +1883,7 @@
       retailBillItems.innerHTML = state.retailBillItems.length ? state.retailBillItems.map(item => `
         <div class="bill-item" data-bill-item-id="${item.id}" tabindex="-1">
           <div class="bill-item-name">${item.name}<small class="bill-item-meta">Quantity: ${item.quantity} | Packaging: ${item.packaging || 'Packet'}</small></div>
+          <div class="bill-item-value">${item.weight || 'Weight: N/A'}</div>
           <div class="bill-item-value">Rate: ₹ ${Number(item.rate).toFixed(2)}</div>
           <div class="bill-item-value">Amount: ₹ ${Number(item.amount).toFixed(2)}</div>
           <button class="btn-danger btn-sm btn-icon" aria-label="Remove ${item.name}" onclick="removeRetailItem('${item.id}')">×</button>
@@ -1889,6 +1903,7 @@
         container.innerHTML = state.wholesaleBillItems.map(item => `
           <div class="bill-item" data-bill-item-id="${item.id}" tabindex="-1">
             <div class="bill-item-name">${item.name}<small class="bill-item-meta">Quantity: ${item.quantity} | Packaging: ${item.packaging || 'Bag'}</small></div>
+            <div class="bill-item-value">${item.weight || 'Weight: N/A'}</div>
             <div class="bill-item-value">Rate: ₹ ${Number(item.rate).toFixed(2)}</div>
             <div class="bill-item-value">Amount: ₹ ${Number(item.amount).toFixed(2)}</div>
             <button class="btn-danger btn-sm btn-icon" aria-label="Remove ${item.name}" onclick="removeWholesaleItem('${item.id}')">×</button>
@@ -1993,11 +2008,17 @@
 
     function saveItem(event) {
       event.preventDefault();
-      const data = { name: itemName.value, unit: itemUnit.value, mrp: parseFloat(mrp.value) };
+      const data = { name: itemName.value, unit: itemUnit.value, mrp: parseFloat(mrp.value), weight: itemWeight.value || null };
       const request = state.editingItemId
         ? (state.editingItemType === 'retail' ? api.updateRetailItem(state.editingItemId, data) : api.updateWholesaleItem(state.editingItemId, data))
         : (state.editingItemType === 'retail' ? api.addRetailItem(data) : api.addWholesaleItem(data));
       request.then(() => { closeItemModal(); showNotification('Item saved', 'success'); return loadAdminItems(); }).catch(err => { itemFormMessage.innerHTML = `<div class="form-error">${err.message}</div>`; });
+    }
+
+    function renderWeightOptions(type) {
+      const weight = document.getElementById('itemWeight');
+      const options = type === 'retail' ? ['', '250 Gram', '500 Gram', '1 KG', '1.5 KG', '2.5 KG', '3 KG', '4 KG'] : ['', '1 KG', '1.5 KG', '2 KG', '2.5 KG', '3 KG', '4 KG', '5 KG', '10 KG'];
+      weight.innerHTML = options.map(value => `<option value="${value}">${value || 'Select default weight...'}</option>`).join('');
     }
 
     function renderRetailItemSelect() {
@@ -2008,8 +2029,8 @@
       wholesaleItemSelect.innerHTML = '<option value="">Choose an item...</option>';
       state.wholesaleItems.forEach(item => { const option = new Option(item.name, item.id); option.dataset.price = item.mrp; wholesaleItemSelect.add(option); });
     }
-    function selectRetailItem() { const item = state.retailItems.find(entry => entry.id == retailItemSelect.value); retailUnit.value = item?.unit || ''; retailPrice.value = item ? Number(item.mrp).toFixed(2) : ''; if (item) retailQuantity.focus(); }
-    function selectWholesaleItem() { const item = state.wholesaleItems.find(entry => entry.id == wholesaleItemSelect.value); wholesaleUnit.value = item?.unit || ''; wholesalePrice.value = item ? Number(item.mrp).toFixed(2) : ''; if (item) wholesaleQuantity.focus(); }
+    function selectRetailItem() { const item = state.retailItems.find(entry => entry.id == retailItemSelect.value); retailUnit.value = item ? 'Packet' : ''; retailWeight.value = item?.weight || ''; retailPrice.value = item ? Number(item.mrp).toFixed(2) : ''; if (item) retailQuantity.focus(); }
+    function selectWholesaleItem() { const item = state.wholesaleItems.find(entry => entry.id == wholesaleItemSelect.value); wholesaleUnit.value = item ? 'Bag' : ''; wholesaleWeight.value = item?.weight || ''; wholesalePrice.value = item ? Number(item.mrp).toFixed(2) : ''; if (item) wholesaleQuantity.focus(); }
 
     function revealBillItem(itemId) {
       const item = document.querySelector(`[data-bill-item-id="${itemId}"]`);
@@ -2026,7 +2047,7 @@
       const item = state.retailItems.find(entry => entry.id == retailItemSelect.value); const quantity = Number(retailQuantity.value);
       if (!item || !Number.isFinite(quantity) || quantity <= 0) return showNotification('Select an item and enter a valid quantity', 'error');
       const billItemId = `${Date.now()}-${Math.random()}`;
-      state.retailBillItems.push({ id: billItemId, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Packet', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) });
+      state.retailBillItems.push({ id: billItemId, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Packet', weight: item.weight || null, quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) });
       renderRetailBill();
       retailQuantity.value = ''; retailItemSelect.value = ''; selectRetailItem();
       revealBillItem(billItemId);
@@ -2035,7 +2056,7 @@
       const item = state.wholesaleItems.find(entry => entry.id == wholesaleItemSelect.value); const quantity = Number(wholesaleQuantity.value);
       if (!item || !Number.isFinite(quantity) || quantity <= 0) return showNotification('Select an item and enter a valid quantity', 'error');
       const billItemId = `${Date.now()}-${Math.random()}`;
-      state.wholesaleBillItems.push({ id: billItemId, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Bag', quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) });
+      state.wholesaleBillItems.push({ id: billItemId, itemId: item.id, name: item.name, unit: item.unit, packaging: 'Bag', weight: item.weight || null, quantity, rate: Number(item.mrp), amount: quantity * Number(item.mrp) });
       renderWholesaleBill();
       wholesaleQuantity.value = ''; wholesaleItemSelect.value = ''; selectWholesaleItem();
       revealBillItem(billItemId);
@@ -2043,10 +2064,10 @@
 
     function renderEstimate(type, bill) {
       const items = bill.items || [];
-      const rows = items.map(item => `<div class="receipt-item"><div class="receipt-item-name">${item.name}</div><div>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
+      const rows = items.map(item => `<div class="receipt-item"><div class="receipt-item-name">${item.name}</div><div>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</div><div>${item.weight || 'N/A'}</div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
       const customer = [bill.customer_name && `Customer Name: ${bill.customer_name}`, bill.customer_phone && `Phone: ${bill.customer_phone}`].filter(Boolean).join('<br>');
       const notes = [bill.description && `Description: ${bill.description}`, bill.note && `Note: ${bill.note}`].filter(Boolean).join('<br>');
-      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-business-name">LAXMI NARAYAN NAMKEEN BHANDAR</div><div>Nayagunj Rampur</div><div>Ph.No.: 9045032878</div></div><div class="receipt-estimate-info"><strong>ESTIMATE</strong><br>Estimate No: ${bill.invoice_number || ''}<br>Date: ${bill.date || ''}${bill.time ? ` | ${bill.time}` : ''}</div>${customer ? `<div class="receipt-customer">${customer}</div>` : ''}<div class="receipt-items"><div class="receipt-item receipt-table-head"><div>Item Name</div><div>Quantity</div><div>Price</div><div>Amount</div></div>${rows}</div><div class="receipt-summary"><span>Qty: ${items.reduce((sum, item) => sum + Number(item.quantity), 0)}</span><span>Items: ${items.length}</span></div><div class="receipt-total">Total: ₹ ${Number(bill.total).toFixed(2)}</div>${notes ? `<div class="receipt-notes">${notes}</div>` : ''}</div>`;
+      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-business-name">LAXMI NARAYAN NAMKEEN BHANDAR</div><div>Nayagunj Rampur</div><div>Ph.No.: 9045032878</div></div><div class="receipt-estimate-info"><strong>ESTIMATE</strong><br>Estimate No: ${bill.invoice_number || ''}<br>Date: ${bill.date || ''}${bill.time ? ` | ${bill.time}` : ''}</div>${customer ? `<div class="receipt-customer">${customer}</div>` : ''}<div class="receipt-items"><div class="receipt-item receipt-table-head"><div>Item Name</div><div>Quantity</div><div>Weight</div><div>Price</div><div>Amount</div></div>${rows}</div><div class="receipt-summary"><span>Qty: ${items.reduce((sum, item) => sum + Number(item.quantity), 0)}</span><span>Items: ${items.length}</span></div><div class="receipt-total">Total: ₹ ${Number(bill.total).toFixed(2)}</div>${notes ? `<div class="receipt-notes">${notes}</div>` : ''}</div>`;
       state.lastEstimate = { type, bill };
       window.history.replaceState({ page: 'receipt' }, '', window.location.href);
       renderPage('receipt');

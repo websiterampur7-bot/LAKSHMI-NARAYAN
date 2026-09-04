@@ -81,6 +81,7 @@ async function initializeDatabase() {
         purchase_rate NUMERIC(10, 2) NOT NULL,
         mrp NUMERIC(10, 2) NOT NULL,
         selling_price NUMERIC(10, 2) NOT NULL,
+        weight TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -94,6 +95,7 @@ async function initializeDatabase() {
         purchase_rate NUMERIC(10, 2) NOT NULL,
         mrp NUMERIC(10, 2) NOT NULL,
         selling_price NUMERIC(10, 2) NOT NULL,
+        weight TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -142,6 +144,8 @@ async function initializeDatabase() {
     await pool.query('ALTER TABLE wholesale_bills ADD COLUMN IF NOT EXISTS customer_name TEXT');
     await pool.query('ALTER TABLE wholesale_bills ADD COLUMN IF NOT EXISTS customer_phone TEXT');
     await pool.query('ALTER TABLE wholesale_bills ADD COLUMN IF NOT EXISTS note TEXT');
+    await pool.query('ALTER TABLE retail_items ADD COLUMN IF NOT EXISTS weight TEXT');
+    await pool.query('ALTER TABLE wholesale_items ADD COLUMN IF NOT EXISTS weight TEXT');
 
     // Create indexes for better performance
     await pool.query(`
@@ -177,13 +181,22 @@ function parseMoney(value) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function isValidItemPayload({ name, unit, mrp } = {}) {
-  return typeof name === 'string' && name.trim() !== '' &&
-    typeof unit === 'string' && unit.trim() !== '' &&
-    parseMoney(mrp) !== null;
+const RETAIL_WEIGHTS = new Set(['250 Gram', '500 Gram', '1 KG', '1.5 KG', '2.5 KG', '3 KG', '4 KG']);
+
+function isValidWeight(weight, type) {
+  if (weight === undefined || weight === null || weight === '') return true;
+  if (typeof weight !== 'string') return false;
+  if (type === 'retail') return RETAIL_WEIGHTS.has(weight);
+  return /^(?:[1-9]\d*(?:\.\d+)?|0\.\d+) KG$/.test(weight);
 }
 
-function isValidBillPayload({ items, total } = {}) {
+function isValidItemPayload({ name, unit, mrp, weight } = {}, type) {
+  return typeof name === 'string' && name.trim() !== '' &&
+    typeof unit === 'string' && unit.trim() !== '' &&
+    parseMoney(mrp) !== null && isValidWeight(weight, type);
+}
+
+function isValidBillPayload({ items, total } = {}, type) {
   const parsedTotal = parseMoney(total);
   const itemTotal = Array.isArray(items) ? items.reduce((sum, item) => sum + Number(item?.amount), 0) : NaN;
   return Array.isArray(items) && items.length > 0 &&
@@ -191,7 +204,8 @@ function isValidBillPayload({ items, total } = {}) {
     items.every(item => item && typeof item.name === 'string' && item.name.trim() !== '' &&
       Number.isFinite(Number(item.quantity)) && Number(item.quantity) > 0 &&
       Number.isFinite(Number(item.rate)) && Number(item.rate) >= 0 &&
-      Number.isFinite(Number(item.amount)) && Number(item.amount) >= 0);
+      Number.isFinite(Number(item.amount)) && Number(item.amount) >= 0 &&
+      isValidWeight(item.weight, type));
 }
 
 function parseId(value) {
@@ -207,7 +221,7 @@ function parseId(value) {
 app.get('/api/retail-items', async (req, res) => {
   try {
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
-    const result = await queryAsync('SELECT id, name, unit, purchase_rate, mrp, selling_price, created_at FROM retail_items WHERE name ILIKE $1 ORDER BY name', [`%${search}%`]);
+    const result = await queryAsync('SELECT id, name, unit, purchase_rate, mrp, selling_price, weight, created_at FROM retail_items WHERE name ILIKE $1 ORDER BY name', [`%${search}%`]);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching retail items:', err);
@@ -219,7 +233,7 @@ app.get('/api/retail-items', async (req, res) => {
 app.get('/api/wholesale-items', async (req, res) => {
   try {
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
-    const result = await queryAsync('SELECT id, name, unit, purchase_rate, mrp, selling_price, created_at FROM wholesale_items WHERE name ILIKE $1 ORDER BY name', [`%${search}%`]);
+    const result = await queryAsync('SELECT id, name, unit, purchase_rate, mrp, selling_price, weight, created_at FROM wholesale_items WHERE name ILIKE $1 ORDER BY name', [`%${search}%`]);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching wholesale items:', err);
@@ -257,15 +271,15 @@ app.put('/api/settings', async (req, res) => {
 // Add retail item
 app.post('/api/retail-items', async (req, res) => {
   try {
-    const { name, unit, mrp } = req.body;
+    const { name, unit, mrp, weight } = req.body;
 
-    if (!isValidItemPayload(req.body)) {
+    if (!isValidItemPayload(req.body, 'retail')) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const result = await queryAsync(
-      'INSERT INTO retail_items (name, unit, purchase_rate, mrp, selling_price) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, unit, purchase_rate, mrp, selling_price',
-      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp)]
+      'INSERT INTO retail_items (name, unit, purchase_rate, mrp, selling_price, weight) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, unit, purchase_rate, mrp, selling_price, weight',
+      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp), weight || null]
     );
 
     res.status(201).json(result.rows[0]);
@@ -282,15 +296,15 @@ app.post('/api/retail-items', async (req, res) => {
 // Add wholesale item
 app.post('/api/wholesale-items', async (req, res) => {
   try {
-    const { name, unit, mrp } = req.body;
+    const { name, unit, mrp, weight } = req.body;
 
-    if (!isValidItemPayload(req.body)) {
+    if (!isValidItemPayload(req.body, 'wholesale')) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const result = await queryAsync(
-      'INSERT INTO wholesale_items (name, unit, purchase_rate, mrp, selling_price) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, unit, purchase_rate, mrp, selling_price',
-      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp)]
+      'INSERT INTO wholesale_items (name, unit, purchase_rate, mrp, selling_price, weight) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, unit, purchase_rate, mrp, selling_price, weight',
+      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp), weight || null]
     );
 
     res.status(201).json(result.rows[0]);
@@ -308,9 +322,9 @@ app.post('/api/wholesale-items', async (req, res) => {
 app.put('/api/retail-items/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, unit, mrp } = req.body;
+    const { name, unit, mrp, weight } = req.body;
 
-    if (!isValidItemPayload(req.body)) {
+    if (!isValidItemPayload(req.body, 'retail')) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     if (parseId(id) === null) {
@@ -318,8 +332,8 @@ app.put('/api/retail-items/:id', async (req, res) => {
     }
 
     const result = await queryAsync(
-      'UPDATE retail_items SET name = $1, unit = $2, purchase_rate = $3, mrp = $4, selling_price = $5 WHERE id = $6 RETURNING id, name, unit, purchase_rate, mrp, selling_price',
-      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp), id]
+      'UPDATE retail_items SET name = $1, unit = $2, purchase_rate = $3, mrp = $4, selling_price = $5, weight = $6 WHERE id = $7 RETURNING id, name, unit, purchase_rate, mrp, selling_price, weight',
+      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp), weight || null, id]
     );
 
     if (result.rows.length === 0) {
@@ -341,9 +355,9 @@ app.put('/api/retail-items/:id', async (req, res) => {
 app.put('/api/wholesale-items/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, unit, mrp } = req.body;
+    const { name, unit, mrp, weight } = req.body;
 
-    if (!isValidItemPayload(req.body)) {
+    if (!isValidItemPayload(req.body, 'wholesale')) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     if (parseId(id) === null) {
@@ -351,8 +365,8 @@ app.put('/api/wholesale-items/:id', async (req, res) => {
     }
 
     const result = await queryAsync(
-      'UPDATE wholesale_items SET name = $1, unit = $2, purchase_rate = $3, mrp = $4, selling_price = $5 WHERE id = $6 RETURNING id, name, unit, purchase_rate, mrp, selling_price',
-      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp), id]
+      'UPDATE wholesale_items SET name = $1, unit = $2, purchase_rate = $3, mrp = $4, selling_price = $5, weight = $6 WHERE id = $7 RETURNING id, name, unit, purchase_rate, mrp, selling_price, weight',
+      [name.trim(), unit.trim(), parseMoney(mrp), parseMoney(mrp), parseMoney(mrp), weight || null, id]
     );
 
     if (result.rows.length === 0) {
@@ -408,7 +422,7 @@ app.post('/api/retail-bills', async (req, res) => {
 
     const { items, total, customer_name, customer_phone, note } = req.body;
 
-    if (!isValidBillPayload(req.body)) {
+    if (!isValidBillPayload(req.body, 'retail')) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Invalid bill details' });
     }
@@ -453,7 +467,7 @@ app.post('/api/wholesale-bills', async (req, res) => {
 
     const { items, total, customer_name, customer_phone, note } = req.body;
 
-    if (!isValidBillPayload(req.body)) {
+    if (!isValidBillPayload(req.body, 'wholesale')) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Invalid bill details' });
     }
