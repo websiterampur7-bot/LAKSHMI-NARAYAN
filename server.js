@@ -549,12 +549,13 @@ function safeText(value) {
 
 app.post('/api/exports/pdf', async (req, res) => {
   try {
-    const { receiptImage, receiptWidth, receiptHeight } = req.body;
+    const { receiptImage, receiptWidth, receiptHeight, billSize, billWidth, billHeight } = req.body;
     if (typeof receiptImage !== 'string' || !receiptImage.startsWith('data:image/png;base64,') || !Number.isFinite(Number(receiptWidth)) || !Number.isFinite(Number(receiptHeight))) {
       return res.status(400).json({ error: 'Invalid receipt image' });
     }
-    const pdfWidth = 226.77;
-    const pdfHeight = pdfWidth * Number(receiptHeight) / Number(receiptWidth);
+    const pdfWidths = { thermal58: 164.41, thermal80: 226.77, a6: 297.64, a5: 419.53, a4: 595.28, letter: 612, legal: 612 };
+    const pdfWidth = billSize === 'custom' && Number.isFinite(Number(billWidth)) ? Math.min(850.4, Math.max(113.4, Number(billWidth) * 2.83465)) : (pdfWidths[billSize] || 226.77);
+    const pdfHeight = billSize === 'custom' && Number.isFinite(Number(billHeight)) ? Math.min(1275.6, Math.max(113.4, Number(billHeight) * 2.83465)) : pdfWidth * Number(receiptHeight) / Number(receiptWidth);
     const doc = new PDFDocument({ size: [pdfWidth, pdfHeight], margin: 0 });
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
@@ -562,7 +563,7 @@ app.post('/api/exports/pdf', async (req, res) => {
       const filename = `LAXMI-NARAYAN-NAMKEEN-ESTIMATE-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.pdf`;
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` }).send(Buffer.concat(chunks));
     });
-    doc.image(Buffer.from(receiptImage.slice('data:image/png;base64,'.length), 'base64'), 0, 0, { width: pdfWidth, height: pdfHeight });
+    doc.image(Buffer.from(receiptImage.slice('data:image/png;base64,'.length), 'base64'), 0, 0, { fit: [pdfWidth, pdfHeight], align: 'center', valign: 'top' });
     doc.end();
   } catch (err) { console.error('PDF export failed:', err); res.status(500).json({ error: 'Failed to create PDF' }); }
 });

@@ -196,6 +196,10 @@ lakshmi-narayan-billing/
 ### Bill History
 - `GET /api/bill-history` - Get saved retail and wholesale estimates for history and reprinting
 
+### Installable App and Bill Sizes
+- The lightweight web app includes a manifest and service worker for supported browser Install App/Create Desktop App flows.
+- Receipt exports support Thermal 58mm, Thermal 80mm, A6, A5, A4, Letter, Legal, and bounded Custom Size options.
+
 ## 📱 Responsive Breakpoints
 
 - **Mobile**: < 768px

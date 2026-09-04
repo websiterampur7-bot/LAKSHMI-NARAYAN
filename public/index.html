@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#173c35">
+  <link rel="manifest" href="manifest.webmanifest">
   <title>LAXMI NARAYAN NAMKEEN</title>
   <style>
     /* ==================== CSS VARIABLES / DESIGN TOKENS ==================== */
@@ -896,6 +898,14 @@
       overflow-wrap: anywhere;
     }
 
+    .receipt-container.size-thermal58 { width: 58mm; }
+    .receipt-container.size-thermal80 { width: 80mm; }
+    .receipt-container.size-a6 { width: 105mm; }
+    .receipt-container.size-a5 { width: 148mm; }
+    .receipt-container.size-a4 { width: 210mm; }
+    .receipt-container.size-letter, .receipt-container.size-legal { width: 216mm; }
+    .receipt-container.size-custom { width: var(--custom-width, 80mm); height: var(--custom-height, auto); min-height: 0; overflow: visible; }
+
     .receipt-header {
       text-align: center;
       margin-bottom: 12px;
@@ -1011,12 +1021,12 @@
       }
 
       .receipt-container {
-        width: 80mm;
+        width: var(--print-width, 80mm) !important;
         margin: 0;
         padding: 0;
         page-break-after: always;
       }
-      body::before, body::after { display: none !important; }
+      body::before, body::after, #dashboardPage::before, #dashboardPage::after { display: none !important; }
       #dashboardPage::before, #dashboardPage::after { display: none !important; }
     }
 
@@ -1111,6 +1121,12 @@
     @keyframes splashOut { to { opacity: 0; visibility: hidden; } }
     .brand-logo { max-width: 180px; max-height: 78px; object-fit: contain; }
     .receipt-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 16px; }
+    .receipt-size-control { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap; }
+    .receipt-size-control label { margin: 0; font-size: 0.85rem; }
+    .receipt-size-control select, .receipt-size-control input { width: auto; min-width: 130px; padding: 7px 10px; font-size: 0.9rem; }
+    .custom-size-fields { display: none; gap: 6px; }
+    .custom-size-fields.active { display: inline-flex; }
+    .custom-size-fields input { min-width: 76px; }
     .customer-fields { display: grid; gap: 12px; margin-top: 16px; }
     .settings-grid { max-width: 720px; }
     .history-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
@@ -1477,6 +1493,7 @@
   <!-- RECEIPT PAGE (for printing) -->
   <div class="page" id="receiptPage">
     <div style="padding: var(--spacing-lg); text-align: center;">
+      <div class="receipt-size-control"><label for="billSize">Bill Size</label><select id="billSize" onchange="changeBillSize()"><option value="thermal58">Thermal 58mm</option><option value="thermal80" selected>Thermal 80mm</option><option value="a6">A6</option><option value="a5">A5</option><option value="a4">A4</option><option value="letter">Letter</option><option value="legal">Legal</option><option value="custom">Custom Size</option></select><div id="customSizeFields" class="custom-size-fields"><input id="customWidth" type="number" min="40" max="300" step="1" value="80" oninput="changeBillSize()" aria-label="Custom width in millimeters"><input id="customHeight" type="number" min="40" max="450" step="1" value="120" oninput="changeBillSize()" aria-label="Custom height in millimeters"></div></div>
       <div class="receipt-actions"><button class="btn-primary" onclick="downloadEstimate('pdf')">Download PDF</button><button class="btn-secondary" onclick="downloadEstimate('png')">Download PNG</button><button class="btn-secondary" onclick="printEstimate()">Print Estimate</button><button class="btn-secondary" onclick="goToDashboard()">Back to Dashboard</button></div>
     </div>
     <div id="receiptContainer"></div>
@@ -1540,6 +1557,7 @@
       retailBillItems: [],
       wholesaleBillItems: [],
       billHistory: [],
+      billSize: 'thermal80',
       editingItemType: null,
       editingItemId: null,
     };
@@ -2104,6 +2122,7 @@
       window.history.replaceState({ page: 'dashboard' }, '', window.location.href);
       renderPage('dashboard');
       updateHeader();
+      if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/service-worker.js').catch(() => {});
       console.log('✨ Lakshmi Narayan Billing System loaded successfully');
     });
 
@@ -2193,10 +2212,12 @@
 
     function renderEstimate(type, bill) {
       const items = bill.items || [];
+      const size = currentBillSize();
       const rows = items.map(item => `<div class="receipt-item"><div class="receipt-item-name">${item.name}</div><div>${item.quantity} ${item.packaging || (type === 'retail' ? 'Packet' : 'Bag')}</div><div>${item.weight || 'N/A'}</div><div>₹ ${Number(item.rate).toFixed(2)}</div><div>₹ ${Number(item.amount).toFixed(2)}</div></div>`).join('');
       const customer = [bill.customer_name && `Customer Name: ${bill.customer_name}`, bill.customer_phone && `Phone: ${bill.customer_phone}`].filter(Boolean).join('<br>');
       const notes = [bill.description && `Description: ${bill.description}`, bill.note && `Note: ${bill.note}`].filter(Boolean).join('<br>');
-      receiptContainer.innerHTML = `<div class="receipt-container"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-business-name">LAXMI NARAYAN NAMKEEN BHANDAR</div><div>Nayagunj Rampur</div><div>Ph.No.: 9045032878</div></div><div class="receipt-estimate-info"><strong>ESTIMATE</strong><br>Estimate No: ${bill.invoice_number || ''}<br>Date: ${bill.date || ''}${bill.time ? ` | ${bill.time}` : ''}</div>${customer ? `<div class="receipt-customer">${customer}</div>` : ''}<div class="receipt-items"><div class="receipt-item receipt-table-head"><div>Item Name</div><div>Quantity</div><div>Weight</div><div>Price</div><div>Amount</div></div>${rows}</div><div class="receipt-summary"><span>Qty: ${items.reduce((sum, item) => sum + Number(item.quantity), 0)}</span><span>Items: ${items.length}</span></div><div class="receipt-total">Total: ₹ ${Number(bill.total).toFixed(2)}</div>${notes ? `<div class="receipt-notes">${notes}</div>` : ''}</div>`;
+      receiptContainer.innerHTML = `<div class="receipt-container size-${size.preset}"><div class="receipt-header"><img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN"><div class="receipt-business-name">LAXMI NARAYAN NAMKEEN BHANDAR</div><div>Nayagunj Rampur</div><div>Ph.No.: 9045032878</div></div><div class="receipt-estimate-info"><strong>ESTIMATE</strong><br>Estimate No: ${bill.invoice_number || ''}<br>Date: ${bill.date || ''}${bill.time ? ` | ${bill.time}` : ''}</div>${customer ? `<div class="receipt-customer">${customer}</div>` : ''}<div class="receipt-items"><div class="receipt-item receipt-table-head"><div>Item Name</div><div>Quantity</div><div>Weight</div><div>Price</div><div>Amount</div></div>${rows}</div><div class="receipt-summary"><span>Qty: ${items.reduce((sum, item) => sum + Number(item.quantity), 0)}</span><span>Items: ${items.length}</span></div><div class="receipt-total">Total: ₹ ${Number(bill.total).toFixed(2)}</div>${notes ? `<div class="receipt-notes">${notes}</div>` : ''}</div>`;
+      if (size.preset === 'custom') { receiptContainer.firstElementChild.style.setProperty('--custom-width', `${size.width}mm`); receiptContainer.firstElementChild.style.setProperty('--custom-height', `${size.height}mm`); }
       state.lastEstimate = { type, bill };
       window.history.replaceState({ page: 'receipt' }, '', window.location.href);
       renderPage('receipt');
@@ -2242,14 +2263,32 @@
         await document.fonts.ready;
         const receipt = document.querySelector('#receiptPage .receipt-container');
         if (!receipt) throw new Error('Receipt preview is unavailable');
-        const canvas = await html2canvas(receipt, { backgroundColor: '#ffffff', scale: 4, useCORS: true, logging: false });
+        const size = currentBillSize();
+        const previousMaxWidth = receipt.style.maxWidth;
+        receipt.style.maxWidth = 'none';
+        const canvas = await html2canvas(receipt, { backgroundColor: '#ffffff', scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)), useCORS: true, logging: false });
+        receipt.style.maxWidth = previousMaxWidth;
         const receiptImage = canvas.toDataURL('image/png');
-        const response = await fetch(`/api/exports/${format}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiptImage, receiptWidth: canvas.width, receiptHeight: canvas.height }) });
+        const response = await fetch(`/api/exports/${format}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiptImage, receiptWidth: canvas.width, receiptHeight: canvas.height, billSize: size.preset, billWidth: size.width, billHeight: size.height }) });
         if (!response.ok) throw new Error('Export failed');
         await deliverExport(await response.blob(), format);
       } catch (err) { showNotification(`Could not download ${format.toUpperCase()}`, 'error'); }
     }
-    function printEstimate() { window.print(); }
+    function printEstimate() { const size = currentBillSize(); document.documentElement.style.setProperty('--print-width', `${size.width}mm`); window.print(); }
+    function currentBillSize() {
+      const preset = document.getElementById('billSize')?.value || state.billSize || 'thermal80';
+      if (preset !== 'custom') return { preset, width: ({ thermal58: 58, thermal80: 80, a6: 105, a5: 148, a4: 210, letter: 216, legal: 216 })[preset] || 80 };
+      const width = Math.min(300, Math.max(40, Number(document.getElementById('customWidth')?.value) || 80));
+      const height = Math.min(450, Math.max(40, Number(document.getElementById('customHeight')?.value) || 120));
+      return { preset, width, height };
+    }
+    function changeBillSize() {
+      const size = currentBillSize();
+      state.billSize = size.preset;
+      document.getElementById('customSizeFields')?.classList.toggle('active', size.preset === 'custom');
+      const receipt = document.querySelector('#receiptPage .receipt-container');
+      if (receipt) { receipt.className = `receipt-container size-${size.preset}`; if (size.preset === 'custom') { receipt.style.setProperty('--custom-width', `${size.width}mm`); receipt.style.setProperty('--custom-height', `${size.height}mm`); } }
+    }
   </script>
 </body>
 </html>
