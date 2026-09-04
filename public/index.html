@@ -1250,7 +1250,7 @@
   </div>
 
   <!-- DASHBOARD PAGE -->
-  <div class="page active" id="dashboardPage">
+  <div class="page" id="dashboardPage">
     <div class="container" style="max-width: 900px; margin-top: var(--spacing-2xl);">
       <div class="dashboard-content">
         <img class="brand-logo" src="assets/logo.png" alt="LAXMI NARAYAN NAMKEEN">
@@ -1741,7 +1741,7 @@
 
       if (state.session) navButtons.innerHTML = '<button class="btn-secondary" onclick="showChangePassword()">Change Password</button><button class="btn-secondary" onclick="logout()">Logout</button>';
 
-      if (state.currentPage !== 'dashboard') {
+      if (state.currentPage !== 'dashboard' && state.currentPage !== 'auth') {
         navButtons.innerHTML += `<button class="btn-secondary nav-back" onclick="goBack()">← Dashboard</button>`;
       }
     }
